@@ -1,0 +1,26 @@
+services:
+  agent-platform:
+    build: ./langgraph-agent-platform
+    ports:
+      - "8000:8000"
+    volumes:
+      - agent-data:/app/data
+
+  polo-api:
+    build: ./polo-visits/backend
+    ports:
+      - "8001:8001"
+    volumes:
+      - polo-data:/app/data
+
+  polo-web:
+    build: ./polo-visits/frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - polo-api
+
+volumes:
+  agent-data:
+  polo-data:
+
