@@ -1,16 +1,16 @@
 # Gabarito privado — baseline legado
 
-Este arquivo pertence a avaliacao do mantenedor. Nao deve ser fornecido a skill durante a execucao cega. As linhas abaixo correspondem ao baseline criado em 2026-09-27; se o legado for alterado antes da avaliacao, atualize as referencias.
+Este arquivo pertence à avaliação do mantenedor. Não deve ser fornecido à skill durante a execução cega. As linhas abaixo correspondem ao baseline atualizado em 2026-09-28; se o legado for alterado antes da avaliação, atualize as referências.
 
 ## Cobertura
 
 | Projeto | CRITICAL | HIGH | MEDIUM | LOW | Total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Plataforma de agentes | 1 | 4 | 4 | 2 | 11 |
-| Gestao de idas ao polo | 1 | 4 | 5 | 3 | 13 |
-| **Total** | **2** | **8** | **9** | **5** | **24** |
+| Controle de presença no polo | 0 | 3 | 5 | 3 | 11 |
+| **Total** | **1** | **7** | **9** | **5** | **22** |
 
-Categorias cobertas: autorizacao, injecao, acesso a arquivos, XSS, isolamento de estado, validacao, integridade de regras, concorrencia/persistencia, exposicao de informacao, acoplamento arquitetural, configuracao web, frontend e manutencao.
+Categorias cobertas: autorização, acesso a arquivos, XSS, isolamento de estado, validação, integridade e auditabilidade, concorrência/persistência, exposição de informação, acoplamento arquitetural, configuração web, frontend e manutenção.
 
 ## Projeto 1 — Plataforma de agentes
 
@@ -124,137 +124,114 @@ Categorias cobertas: autorizacao, injecao, acesso a arquivos, XSS, isolamento de
 - **Correcao esperada:** DTOs separados para create/update e regra explicita de identidade.
 - **Demonstracao:** `test_agent_replacement_contract` envia `id="ignored"` e observa a substituicao de `assistant-demo`.
 
-## Projeto 2 — Gestao de idas ao polo
+## Projeto 2 — Controle de presença no polo
 
-### P2-01 — Injecao SQL na pesquisa de visitas
+### P2-01 — Controle pessoal permite ler, alterar e remover dados de outra pessoa
 
-- **Categoria / severidade:** seguranca, injecao — **CRITICAL**.
-- **Arquivo/linhas:** `polo-visits/backend/app/main.py:51-57`.
-- **Evidencia e reproducao:** `user_id` e `q` sao interpolados em SQL. Pesquisar por `inexistente%' OR 1=1 --` retorna registros de Ana e Bruno.
-- **Esperado / atual:** esperado parametros bind para todos os valores e agrupamento logico explicito; atualmente entrada altera a estrutura da query.
-- **Impacto:** leitura arbitraria do banco e possibilidade de ampliar impacto conforme driver/permissoes evoluam.
-- **Correcao esperada:** query parametrizada/repository, escaping nunca como substituto, testes com metacaracteres e principio do menor privilegio.
-- **Demonstracao:** `docker run --rm polo-api-test python -m pytest -q tests/test_observed_behavior.py::test_search_contract_with_sql_metacharacters`.
+- **Categoria / severidade:** segurança, Broken Access Control/IDOR — **HIGH**.
+- **Arquivo/linhas:** `polo-visits/backend/app/adapters/http/api.py:20-50`; `app/application/attendance_service.py:28-39`.
+- **Evidência e reprodução:** `X-User` é obrigatório, mas ignorado. Com `X-User: ana`, use `user_id=bruno` no GET, PUT ou DELETE para consultar, sobrescrever ou apagar marcações de Bruno.
+- **Esperado / atual:** esperado derivar o proprietário de uma identidade autenticada; atualmente o cliente escolhe o usuário-alvo.
+- **Impacto:** vazamento e adulteração de dados pessoais de presença.
+- **Correção esperada:** autenticação real, autorização no caso de uso e repositório escopado ao principal/tenant.
+- **Demonstração:** `tests/test_observed_behavior.py::test_header_identity_does_not_control_requested_user`.
 
-### P2-02 — Consultas e resumo aceitam identidade de outra pessoa
+### P2-02 — Visão gerencial exposta sem papel ou vínculo com a equipe
 
-- **Categoria / severidade:** seguranca, autorizacao/IDOR — **HIGH**.
-- **Arquivo/linhas:** `polo-visits/backend/app/main.py:45-63` e `:155-166`.
-- **Evidencia e reproducao:** `X-User` e recebido, mas ignorado; `user_id` da query seleciona qualquer pessoa. Use header `ana` com `user_id=bruno` nas duas rotas.
-- **Esperado / atual:** esperado derivar o usuario da identidade autenticada ou exigir papel administrativo; atualmente o chamador escolhe o dono consultado.
-- **Impacto:** vazamento de agenda, historico, finalidade, notas e resumo de terceiros.
-- **Correcao esperada:** autenticacao, autorizacao centralizada e consultas sempre escopadas ao principal/tenant.
-- **Demonstracao:** `docker run --rm polo-api-test python -m pytest -q tests/test_observed_behavior.py::test_identity_contract_across_records`.
+- **Categoria / severidade:** segurança, autorização funcional — **HIGH**.
+- **Arquivo/linhas:** `polo-visits/backend/app/adapters/http/api.py:52-58`; `app/application/attendance_service.py:41-66`.
+- **Evidência e reprodução:** envie `X-User: outsider` com `manager_id=ana`; a resposta contém Bruno, Carla, Diego, totais e dias individuais.
+- **Esperado / atual:** esperado validar identidade, papel de gestor e escopo organizacional; atualmente `manager_id` é autodeclarado.
+- **Impacto:** exposição em massa de dados da equipe e inferência de rotina presencial.
+- **Correção esperada:** política de autorização centralizada, identidade confiável e minimização do retorno.
+- **Demonstração:** `tests/test_observed_behavior.py::test_manager_view_is_exposed_to_a_different_x_user`.
 
-### P2-03 — Alteracao e cancelamento sem verificar proprietario
+### P2-03 — XSS armazenado nas observações
 
-- **Categoria / severidade:** seguranca, autorizacao/IDOR — **HIGH**.
-- **Arquivo/linhas:** `polo-visits/backend/app/main.py:103-152`.
-- **Evidencia e reproducao:** PUT e DELETE buscam somente pelo ID; o header nao participa da query nem de uma regra. Ana altera e cancela o registro inicial de Bruno.
-- **Esperado / atual:** esperado localizar por `id + owner/tenant` e autorizar a transicao; atualmente qualquer ID existente pode ser modificado.
-- **Impacto:** adulteracao ou cancelamento de visitas alheias.
-- **Correcao esperada:** policy/dependency de autorizacao, repositorio escopado, 404/403 coerente e testes negativos por usuario.
-- **Demonstracao:** `test_identity_contract_across_records` executa PUT e DELETE no registro de Bruno com `X-User: ana`.
+- **Categoria / severidade:** segurança web — **HIGH**.
+- **Arquivo/linhas:** `polo-visits/backend/app/adapters/http/api.py:8-12`; `polo-visits/frontend/src/App.jsx:81` e `:111`.
+- **Evidência e reprodução:** o backend persiste HTML livre e o frontend usa `dangerouslySetInnerHTML` tanto no editor pessoal quanto no detalhe do gestor. Uma nota como `<img src=x onerror=alert(1)>` vira elemento executável.
+- **Esperado / atual:** esperado renderizar notas como texto ou sanitizar com política rigorosa; atualmente entrada persistida é inserida diretamente no DOM.
+- **Impacto:** execução de script na origem da aplicação para o próprio usuário e para gestores que consultem a equipe.
+- **Correção esperada:** remover os sinks HTML, validar limites no backend e adicionar CSP como defesa adicional.
+- **Demonstração:** `src/App.test.jsx`, teste “caracteriza a injeção deliberada de HTML”.
 
-### P2-04 — Criacao permite personificar outro usuario
+### P2-04 — Correções de presença destroem o histórico sem trilha de auditoria
 
-- **Categoria / severidade:** seguranca, integridade de identidade — **HIGH**.
-- **Arquivo/linhas:** `polo-visits/backend/app/main.py:66-96`.
-- **Evidencia e reproducao:** a linha 85 persiste `body.user_id`; `x_user` nao e comparado. Envie header Ana e body `user_id=bruno`.
-- **Esperado / atual:** esperado dono derivado da identidade autenticada; atualmente o cliente escolhe para quem cria o agendamento.
-- **Impacto:** spam, fraude de agenda e registros falsos em nome de terceiros.
-- **Correcao esperada:** retirar `user_id` do payload comum, usar principal autenticado e reservar criacao delegada a papel explicito.
-- **Demonstracao:** `docker run --rm polo-api-test python -m pytest -q tests/test_observed_behavior.py::test_payload_contract_keeps_supplied_values`.
+- **Categoria / severidade:** integridade e auditabilidade — **MEDIUM**.
+- **Arquivo/linhas:** `polo-visits/backend/app/adapters/persistence/sqlite.py:41-73`.
+- **Evidência e reprodução:** o upsert sobrescreve status/notas do mesmo dia e o DELETE remove definitivamente o registro; não há evento, versão, autor ou motivo da correção.
+- **Esperado / atual:** esperado preservar histórico de alterações relevante para relatórios gerenciais; atualmente um registro pode ser reescrito ou apagado sem vestígio.
+- **Impacto:** relatórios não auditáveis, dificuldade de investigar erros e possibilidade de manipulação retroativa.
+- **Correção esperada:** histórico append-only ou tabela de auditoria com ator, data, valor anterior, novo valor e motivo; restringir alterações fora da janela permitida.
+- **Demonstração:** marque, altere e remova a mesma data e consulte diretamente o banco: apenas o último estado — ou nenhum — permanece.
 
-### P2-05 — XSS armazenado nas observacoes
+### P2-05 — Data, mês, status, usuário e notas não têm invariantes de domínio
 
-- **Categoria / severidade:** seguranca web — **HIGH**.
-- **Arquivo/linhas:** `polo-visits/backend/app/main.py:10-17`, `:77-95`; `polo-visits/frontend/src/App.jsx:209`.
-- **Evidencia e reproducao:** backend aceita HTML sem regra e frontend injeta `notes` com `dangerouslySetInnerHTML`. O payload `<img src=x onerror=alert(1)>` e persistido e vira atributo executavel no DOM do navegador.
-- **Esperado / atual:** esperado renderizar notas como texto ou sanitizar com politica rigorosa se HTML for requisito; atualmente conteudo armazenado entra diretamente no DOM.
-- **Impacto:** execucao de script na origem do frontend, permitindo agir como o usuario e ler dados disponiveis a pagina.
-- **Correcao esperada:** remover `dangerouslySetInnerHTML`, renderizar `{visit.notes}`, validar tamanho/conteudo no backend e adotar CSP como defesa adicional.
-- **Demonstracao:** backend em `test_payload_contract_keeps_supplied_values`; frontend com `docker run --rm polo-web-test npm test -- --run src/App.test.jsx`.
+- **Categoria / severidade:** segurança/qualidade, validação — **MEDIUM**.
+- **Arquivo/linhas:** `polo-visits/backend/app/adapters/http/api.py:8-12`; `app/domain/models.py:8-13`; `app/application/attendance_service.py:33-35`.
+- **Evidência e reprodução:** a API aceita `amanha-talvez`, `talvez-presente`, usuário inexistente e notas sem limite.
+- **Esperado / atual:** esperado data ISO válida, mês coerente, enum de status, usuário conhecido e limites de texto; atualmente todos são strings livres.
+- **Impacto:** registros impossíveis, contagens inconsistentes e crescimento descontrolado do banco.
+- **Correção esperada:** value objects/tipos de domínio, validação Pydantic e constraints equivalentes no SQLite.
+- **Demonstração:** `tests/test_observed_behavior.py::test_payload_keeps_unvalidated_status_date_and_notes`.
 
-### P2-06 — Datas, horarios, acompanhantes e status sem tipos/regras de dominio
+### P2-06 — CORS permite qualquer origem com credenciais
 
-- **Categoria / severidade:** seguranca/qualidade, validacao — **MEDIUM**.
-- **Arquivo/linhas:** `polo-visits/backend/app/main.py:10-27`, `:68-75` e `:121-130`.
-- **Evidencia e reproducao:** data/horario/status sao strings livres, acompanhantes aceita negativos, finalidade nem e checada no `if`; a API persiste `amanha-talvez`, `25:90`, `-4` e status arbitrario.
-- **Esperado / atual:** esperado `date`, `time`, enum de status, limites de acompanhantes, strings nao vazias e regras de antecedencia; atualmente apenas presenca parcial e tipo inteiro sao verificados.
-- **Impacto:** registros impossiveis, resumos com chaves inesperadas e regras facilmente contornadas.
-- **Correcao esperada:** DTOs tipados/restritos, validadores de dominio compartilhados e transicoes de estado controladas no servidor.
-- **Demonstracao:** `test_payload_contract_keeps_supplied_values` e `test_update_contract_for_capacity_and_status`.
+- **Categoria / severidade:** segurança de configuração web — **MEDIUM**.
+- **Arquivo/linhas:** `polo-visits/backend/app/main.py:9-16`.
+- **Evidência e reprodução:** origens, métodos e headers usam wildcard com credenciais; o preflight reflete `https://untrusted.example`.
+- **Esperado / atual:** esperado allowlist por ambiente e somente métodos/headers necessários; atualmente qualquer site pode chamar e ler a API pelo navegador.
+- **Impacto:** amplia os efeitos da ausência de autenticação e de futuras credenciais baseadas em navegador.
+- **Correção esperada:** allowlist estrita e teste negativo de preflight.
+- **Demonstração:** `tests/test_observed_behavior.py::test_browser_preflight_contract_remains_permissive`.
 
-### P2-07 — Regra de capacidade so existe na criacao
+### P2-07 — SQLite global síncrono é compartilhado por endpoints assíncronos
 
-- **Categoria / severidade:** arquitetura/integridade de regra — **MEDIUM**.
-- **Arquivo/linhas:** `polo-visits/backend/app/main.py:70-75` versus `:103-137`.
-- **Evidencia e reproducao:** POST limita cinco visitas agendadas por data; PUT move uma sexta visita para a mesma data sem repetir a verificacao. O teste termina com seis registros.
-- **Esperado / atual:** esperado uma politica unica aplicada atomicamente em criacao e reagendamento; atualmente a regra esta presa a um endpoint.
-- **Impacto:** overbooking e comportamento inconsistente conforme o caminho usado.
-- **Correcao esperada:** service/use case transacional reutilizado por create/update e constraint/estrategia contra corrida concorrente.
-- **Demonstracao:** `docker run --rm polo-api-test python -m pytest -q tests/test_observed_behavior.py::test_update_contract_for_capacity_and_status`.
+- **Categoria / severidade:** arquitetura, concorrência e persistência — **MEDIUM**.
+- **Arquivo/linhas:** `polo-visits/backend/app/adapters/persistence/sqlite.py:10-13`; `app/main.py:18-20`.
+- **Evidência e reprodução:** uma conexão com `check_same_thread=False` é compartilhada por toda a aplicação; execute/commit/leitura não possuem unidade de trabalho nem lock.
+- **Esperado / atual:** esperado conexão por request/unidade de trabalho e limites transacionais claros; atualmente requisições concorrentes compartilham estado e bloqueiam o event loop.
+- **Impacto:** contenção, respostas intercaladas, falhas de lock e baixa escalabilidade.
+- **Correção esperada:** sessões injetadas por request, transações no caso de uso e I/O assíncrono ou executado fora do event loop.
+- **Demonstração:** carga concorrente de PUTs para a mesma pessoa/data e inspeção de erros, respostas e valor final.
 
-### P2-08 — Rotas concentram regra, SQL e transacao sobre conexao global
+### P2-08 — Hexágono estrutural mantém domínio anêmico e formato do SQLite nas portas
 
-- **Categoria / severidade:** arquitetura e concorrencia — **MEDIUM**.
-- **Arquivo/linhas:** `polo-visits/backend/app/main.py:45-166`; `app/database.py:7-10`.
-- **Evidencia e reproducao:** cada endpoint monta/roda SQL, valida regra, faz commit e formata retorno; todos usam o singleton SQLite com `check_same_thread=False` em funcoes async, sem unidade de trabalho.
-- **Esperado / atual:** esperado separar handler HTTP, casos de uso/regras e repositorio/transacoes; atualmente testes, concorrencia e mudanca de persistencia ficam acoplados ao modulo de rotas.
-- **Impacto:** duplicacao/omissao de regras (como capacidade), bloqueio do event loop, commits parciais e alto custo de manutencao.
-- **Correcao esperada:** camadas leves orientadas ao dominio, dependencias injetadas, sessao por request e transacoes nos casos de uso.
-- **Demonstracao:** `rg -n "database\.connection|commit\(|SELECT |INSERT |UPDATE " polo-visits/backend/app/main.py` lista o acesso a dados em todos os handlers.
+- **Categoria / severidade:** arquitetura e manutenção — **MEDIUM**.
+- **Arquivo/linhas:** `polo-visits/backend/app/domain/ports.py:1-17`; `app/domain/models.py:8-13`; `app/application/attendance_service.py:7-25`.
+- **Evidência e reprodução:** `AttendanceRecord` é `dict[str, Any]`; o serviço conhece chaves do registro e altera dicionários devolvidos pelo adaptador; as invariantes não existem no domínio.
+- **Esperado / atual:** esperado que portas troquem entidades/DTOs tipados e que regras pertençam ao núcleo; atualmente uma mudança de schema atravessa adaptador, serviço e HTTP.
+- **Impacto:** falhas tardias por `KeyError`, adaptadores incompatíveis e falsa sensação de isolamento arquitetural.
+- **Correção esperada:** entidades e value objects, DTOs explícitos e mapeamento nas bordas.
+- **Demonstração:** um repositório substituto pode devolver qualquer dicionário sem violar o protocolo declarado.
 
-### P2-09 — CORS permite qualquer origem com credenciais
+### P2-09 — URL da API está fixada em localhost
 
-- **Categoria / severidade:** seguranca de configuracao web — **MEDIUM**.
-- **Arquivo/linhas:** `polo-visits/backend/app/main.py:30-37`.
-- **Evidencia e reproducao:** wildcard de origens/metodos/headers com credenciais faz o preflight refletir `https://untrusted.example` e autorizar DELETE/X-User.
-- **Esperado / atual:** esperado allowlist de origens conhecidas, metodos/headers minimos e politica coerente de credenciais; atualmente qualquer site recebe permissao CORS.
-- **Impacto:** amplia ataques cross-origin quando autenticacao por cookie/token for adicionada e permite leitura pelo navegador de origem nao confiavel.
-- **Correcao esperada:** configuracao por ambiente com allowlist estrita e testes de preflight negativo.
-- **Demonstracao:** `docker run --rm polo-api-test python -m pytest -q tests/test_observed_behavior.py::test_browser_preflight_contract`.
-
-### P2-10 — Componente React concentra a aplicacao inteira
-
-- **Categoria / severidade:** arquitetura frontend — **MEDIUM**.
-- **Arquivo/linhas:** `polo-visits/frontend/src/App.jsx:14-223`.
-- **Evidencia e reproducao:** `App` controla identidade, busca, resumo, formulario, validacao, POST/PUT/DELETE, edicao, confirmacao e toda a renderizacao em um unico componente de mais de 200 linhas.
-- **Esperado / atual:** esperado separar cliente HTTP/hooks, formulario, resumo e lista/cards com limites testaveis; atualmente qualquer mudanca de fluxo toca o mesmo estado e componente.
-- **Impacto:** testes complexos, re-renderizacao ampla, duplicacao futura e maior risco de regressao.
-- **Correcao esperada:** extrair API client, hooks/use cases e componentes focados, mantendo estado no menor ancestral necessario.
-- **Demonstracao:** `rg -n "function |fetch\(|return \(" polo-visits/frontend/src/App.jsx` e `npm test` mostram que os fluxos so podem ser montados pelo componente inteiro.
-
-### P2-11 — URL da API fixada em localhost
-
-- **Categoria / severidade:** qualidade/configuracao — **LOW**.
+- **Categoria / severidade:** qualidade/configuração — **LOW**.
 - **Arquivo/linhas:** `polo-visits/frontend/src/App.jsx:3`.
-- **Evidencia e reproducao:** o bundle sempre chama `http://localhost:8001`; ao servir de outra maquina/origem, `localhost` aponta para o computador do visitante.
-- **Esperado / atual:** esperado URL relativa/proxy ou variavel `VITE_API_URL` por ambiente; atualmente deployment fora da topologia local quebra.
-- **Impacto:** artefato nao portavel e configuracao de CORS desnecessariamente acoplada.
-- **Correcao esperada:** configuracao validada no build/runtime, default relativo e documentacao de ambientes.
-- **Demonstracao:** `rg -n "localhost:8001" polo-visits/frontend/src polo-visits/frontend/dist` apos `npm run build`.
+- **Evidência e reprodução:** o bundle sempre usa `http://localhost:8001`; ao acessar por outra máquina, localhost aponta para o computador do visitante.
+- **Impacto:** artefato não portável e topologia de deployment acoplada ao código.
+- **Correção esperada:** URL relativa/reverse proxy ou `VITE_API_URL` validada por ambiente.
+- **Demonstração:** abrir a interface por hostname remoto e observar as requisições.
 
-### P2-12 — Cards usam indice como chave React
-
-- **Categoria / severidade:** qualidade frontend — **LOW**.
-- **Arquivo/linhas:** `polo-visits/frontend/src/App.jsx:199-200`.
-- **Evidencia e reproducao:** a lista ordenada/filtrada usa `key={index}` embora cada visita tenha `id`; busca, criacao ou cancelamento muda indices e permite reutilizacao do DOM para outro registro.
-- **Esperado / atual:** esperado `key={visit.id}` estavel; atualmente identidade visual depende da posicao.
-- **Impacto:** estado local/foco de componentes futuros pode migrar para o card errado e gerar bugs sutis.
-- **Correcao esperada:** usar ID persistente e testar reordenacao/remocao.
-- **Demonstracao:** evidencia estatica na linha 200; renderizar lista, inserir item no inicio e inspecionar reutilizacao de nos no React DevTools.
-
-### P2-13 — Dependencias frontend nao sao reproduziveis
+### P2-10 — Dependências frontend e builds não são reproduzíveis
 
 - **Categoria / severidade:** qualidade da cadeia de build — **LOW**.
-- **Arquivo/linhas:** `polo-visits/frontend/package.json:12-23`.
-- **Evidencia e reproducao:** quase todas as dependencias usam `latest` e nao ha lockfile versionado; uma instalacao futura pode trazer majors incompatíveis e alterar o resultado sem mudanca do repositorio.
-- **Esperado / atual:** esperado faixas controladas e lockfile versionado; atualmente o baseline depende do momento do `npm install`.
-- **Impacto:** builds/testes nao deterministas e risco de supply-chain/compatibilidade maior.
-- **Correcao esperada:** fixar versoes/faixas revisadas, manter `package-lock.json` e usar `npm ci` em CI/Docker.
-- **Demonstracao:** `rg -n 'latest' polo-visits/frontend/package.json`; remover lock/node_modules e instalar em datas diferentes pode resolver versoes distintas.
+- **Arquivo/linhas:** `polo-visits/frontend/package.json:13-23`; `frontend/Dockerfile:1-8`.
+- **Evidência e reprodução:** quase todas as dependências usam `latest`, não há lockfile versionado e o Docker executa `npm install`.
+- **Impacto:** instalações futuras podem resolver versões incompatíveis sem mudança no repositório.
+- **Correção esperada:** versões/faixas controladas, lockfile versionado e `npm ci`.
+- **Demonstração:** o build atual resolveu Vite 8.3.1 e Vitest 5.0.2 dinamicamente.
+
+### P2-11 — Bootstrap do banco depende apenas da contagem de presenças
+
+- **Categoria / severidade:** persistência e manutenção — **LOW**.
+- **Arquivo/linhas:** `polo-visits/backend/app/adapters/persistence/sqlite.py:120-147`.
+- **Evidência e reprodução:** o seed inteiro só roda quando `attendance` está vazio. Se houver presença e `team_members` estiver vazio/incompleto, a inicialização não restaura a equipe.
+- **Impacto:** visão gerencial vazia ou inconsistente após migração/restauração parcial.
+- **Correção esperada:** migrações idempotentes e seed independente por conjunto de dados.
+- **Demonstração:** mantenha uma presença, apague `team_members`, reinicie e consulte a visão do time.
 
 ## Checklist de fluxos que a refatoracao deve preservar
 
@@ -270,18 +247,18 @@ Categorias cobertas: autorizacao, injecao, acesso a arquivos, XSS, isolamento de
 - [ ] Estado e decisao sobrevivem a reinicio usando persistencia local.
 - [ ] Conversas, ferramentas e aprovacoes permanecem isoladas entre usuarios/agentes.
 
-### Gestao de idas ao polo
+### Controle de presença no polo
 
-- [ ] Interface carrega e mostra dados ficticios do perfil selecionado.
-- [ ] Lista e pesquisa de visitas funcionam para o usuario autorizado.
-- [ ] Resumo reflete agendadas, concluidas, canceladas e total.
-- [ ] Criacao valida e agenda uma visita futura.
-- [ ] Edicao valida altera data, horario, finalidade, notas e acompanhantes permitidos.
-- [ ] Cancelamento valido muda o status e o resumo.
-- [ ] Regra de capacidade continua aplicada a criacao e reagendamento.
-- [ ] Troca entre Ana e Bruno nao mistura dados nem autoriza operacoes cruzadas.
-- [ ] Notas sao exibidas como conteudo inerte.
-- [ ] Backend, frontend, testes e build iniciam com os comandos documentados.
+- [ ] Interface carrega o calendário e os dados fictícios do perfil selecionado.
+- [ ] Meta mensal de 8 dias, realizado, restante e percentual são consistentes.
+- [ ] Pessoa autorizada pode marcar presença ou ausência e corrigir uma data.
+- [ ] Troca entre Ana e Bruno não mistura nem autoriza operações cruzadas.
+- [ ] Aba gerencial exige papel e vínculo real com a equipe.
+- [ ] Total, média e progresso de Bruno, Carla e Diego são consistentes.
+- [ ] Notas são exibidas como conteúdo inerte no nível pessoal e gerencial.
+- [ ] Correções preservam uma trilha de auditoria suficiente.
+- [ ] Calendário, API e persistência usam o mesmo contrato de data.
+- [ ] Backend, frontend, testes, build e E2E real passam com os comandos documentados.
 
 ## Comandos de baseline
 
@@ -297,6 +274,9 @@ docker run --rm polo-web-test
 
 docker compose up --build -d
 docker compose ps
+
+docker build --target e2e -t polo-web-e2e polo-visits/frontend
+docker run --rm --add-host=host.docker.internal:host-gateway polo-web-e2e
 ```
 
-No baseline, os testes de `test_observed_behavior.py` e o segundo teste de `App.test.jsx` caracterizam comportamentos inseguros atuais. Depois da correcao, eles devem ser substituidos ou invertidos para esperar rejeicao/neutralizacao, sem simplesmente serem apagados.
+No baseline, `test_observed_behavior.py` caracteriza autorização, validação e CORS inseguros. Em `App.test.jsx`, o teste de HTML persistido caracteriza o XSS. Depois da correção, esses testes devem ser substituídos ou invertidos para esperar rejeição ou neutralização, sem simplesmente serem apagados.

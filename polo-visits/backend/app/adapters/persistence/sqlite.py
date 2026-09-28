@@ -1,11 +1,10 @@
 import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any
 
-from app.domain.models import VisitCreateCommand, VisitUpdateCommand
-from app.domain.ports import VisitRecord
+from app.domain.models import AttendanceUpsertCommand
+from app.domain.ports import AttendanceRecord, TeamMember
 
 
 DB_PATH = Path(os.getenv("POLO_DB_PATH", "data/polo.db"))
@@ -18,164 +17,102 @@ def timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def row_to_dict(row: sqlite3.Row | None) -> VisitRecord | None:
+def current_month() -> str:
+    return date.today().strftime("%Y-%m")
+
+
+def row_to_dict(row: sqlite3.Row | None) -> AttendanceRecord | None:
     return dict(row) if row else None
 
 
-class SQLiteVisitRepository:
+class SQLiteAttendanceRepository:
     def __init__(self, database_connection: sqlite3.Connection):
         self._connection = database_connection
 
-    def list(self, user_id: str, query: str = "") -> list[VisitRecord]:
-        if query:
-            # Deliberately preserves the legacy query behavior for the challenge.
-            sql = (
-                "SELECT * FROM visits "
-                f"WHERE user_id = '{user_id}' AND purpose LIKE '%{query}%' "
-                f"OR notes LIKE '%{query}%' ORDER BY visit_date, start_time"
-            )
-            rows = self._connection.execute(sql).fetchall()
-        else:
-            rows = self._connection.execute(
-                "SELECT * FROM visits WHERE user_id = ? ORDER BY visit_date, start_time",
-                (user_id,),
-            ).fetchall()
+    def list_month(self, user_id: str, month: str) -> list[AttendanceRecord]:
+        rows = self._connection.execute(
+            "SELECT * FROM attendance "
+            "WHERE user_id = ? AND substr(attendance_date, 1, 7) = ? "
+            "ORDER BY attendance_date",
+            (user_id, month),
+        ).fetchall()
         return [dict(row) for row in rows]
 
-    def count_scheduled_on(self, visit_date: str) -> int:
-        row = self._connection.execute(
-            "SELECT COUNT(*) AS total FROM visits "
-            "WHERE visit_date = ? AND status = 'scheduled'",
-            (visit_date,),
-        ).fetchone()
-        return row["total"]
-
-    def create(self, command: VisitCreateCommand) -> VisitRecord:
+    def upsert(self, command: AttendanceUpsertCommand) -> AttendanceRecord:
         now = timestamp()
-        cursor = self._connection.execute(
+        self._connection.execute(
             """
-            INSERT INTO visits
-                (user_id, visitor_name, visit_date, start_time, purpose, notes,
-                 companions, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?)
+            INSERT INTO attendance
+                (user_id, attendance_date, status, notes, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, attendance_date) DO UPDATE SET
+                status = excluded.status,
+                notes = excluded.notes,
+                updated_at = excluded.updated_at
             """,
             (
                 command.user_id,
-                command.visitor_name,
-                command.visit_date,
-                command.start_time,
-                command.purpose,
-                command.notes,
-                command.companions,
-                now,
-                now,
-            ),
-        )
-        self._connection.commit()
-        return self.get(cursor.lastrowid)  # type: ignore[return-value]
-
-    def get(self, visit_id: int) -> VisitRecord | None:
-        row = self._connection.execute(
-            "SELECT * FROM visits WHERE id = ?", (visit_id,)
-        ).fetchone()
-        return row_to_dict(row)
-
-    def update(self, visit_id: int, command: VisitUpdateCommand) -> VisitRecord:
-        self._connection.execute(
-            """
-            UPDATE visits
-            SET visitor_name = ?, visit_date = ?, start_time = ?, purpose = ?,
-                notes = ?, companions = ?, status = ?, updated_at = ?
-            WHERE id = ?
-            """,
-            (
-                command.visitor_name,
-                command.visit_date,
-                command.start_time,
-                command.purpose,
-                command.notes,
-                command.companions,
+                command.attendance_date,
                 command.status,
-                timestamp(),
-                visit_id,
+                command.notes,
+                now,
+                now,
             ),
         )
         self._connection.commit()
-        return self.get(visit_id)  # type: ignore[return-value]
+        row = self._connection.execute(
+            "SELECT * FROM attendance WHERE user_id = ? AND attendance_date = ?",
+            (command.user_id, command.attendance_date),
+        ).fetchone()
+        return row_to_dict(row)  # type: ignore[return-value]
 
-    def cancel(self, visit_id: int) -> None:
+    def delete(self, user_id: str, attendance_date: str) -> None:
         self._connection.execute(
-            "UPDATE visits SET status = 'cancelled', updated_at = ? WHERE id = ?",
-            (timestamp(), visit_id),
+            "DELETE FROM attendance WHERE user_id = ? AND attendance_date = ?",
+            (user_id, attendance_date),
         )
         self._connection.commit()
 
-    def summarize(self, user_id: str) -> VisitRecord:
+    def list_team(self, manager_id: str) -> list[TeamMember]:
         rows = self._connection.execute(
-            "SELECT status, COUNT(*) AS total FROM visits "
-            "WHERE user_id = ? GROUP BY status",
-            (user_id,),
+            "SELECT user_id, name FROM team_members "
+            "WHERE manager_id = ? ORDER BY name",
+            (manager_id,),
         ).fetchall()
-        totals: dict[str, Any] = {
-            "scheduled": 0,
-            "completed": 0,
-            "cancelled": 0,
-        }
-        for row in rows:
-            totals[row["status"]] = row["total"]
-        totals["total"] = sum(row["total"] for row in rows)
-        totals["user_id"] = user_id
-        return totals
+        return [dict(row) for row in rows]
 
 
 def seed() -> None:
     created = timestamp()
-    rows = [
-        (
-            "ana",
-            "Ana Demo",
-            "2026-10-05",
-            "09:00",
-            "Aula presencial",
-            "Levar documento ficticio",
-            0,
-            "scheduled",
-            created,
-            created,
-        ),
-        (
-            "bruno",
-            "Bruno Demo",
-            "2026-10-06",
-            "14:00",
-            "Atendimento academico",
-            "Conferir sala na recepcao",
-            1,
-            "scheduled",
-            created,
-            created,
-        ),
-        (
-            "ana",
-            "Ana Demo",
-            "2026-09-12",
-            "10:30",
-            "Encontro de projeto",
-            "Visita ja concluida",
-            0,
-            "completed",
-            created,
-            created,
-        ),
+    month = current_month()
+    connection.executemany(
+        "INSERT INTO team_members (manager_id, user_id, name) VALUES (?, ?, ?)",
+        [
+            ("ana", "bruno", "Bruno Demo"),
+            ("ana", "carla", "Carla Demo"),
+            ("ana", "diego", "Diego Demo"),
+        ],
+    )
+    attendance = [
+        ("ana", f"{month}-02", "present", "Trabalho presencial"),
+        ("ana", f"{month}-05", "present", "Reunião no polo"),
+        ("ana", f"{month}-09", "absent", "Marcação corrigível"),
+        ("bruno", f"{month}-01", "present", ""),
+        ("bruno", f"{month}-03", "present", ""),
+        ("bruno", f"{month}-08", "absent", ""),
+        ("carla", f"{month}-02", "present", ""),
+        ("carla", f"{month}-04", "present", ""),
+        ("carla", f"{month}-06", "present", ""),
+        ("carla", f"{month}-10", "present", ""),
+        ("diego", f"{month}-07", "absent", ""),
     ]
     connection.executemany(
         """
-        INSERT INTO visits
-            (user_id, visitor_name, visit_date, start_time, purpose, notes,
-             companions, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO attendance
+            (user_id, attendance_date, status, notes, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        rows,
+        [(*row, created, created) for row in attendance],
     )
     connection.commit()
 
@@ -183,31 +120,36 @@ def seed() -> None:
 def initialize_database() -> None:
     connection.executescript(
         """
-        CREATE TABLE IF NOT EXISTS visits (
+        CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
-            visitor_name TEXT NOT NULL,
-            visit_date TEXT NOT NULL,
-            start_time TEXT NOT NULL,
-            purpose TEXT NOT NULL,
+            attendance_date TEXT NOT NULL,
+            status TEXT NOT NULL,
             notes TEXT NOT NULL DEFAULT '',
-            companions INTEGER NOT NULL DEFAULT 0,
-            status TEXT NOT NULL DEFAULT 'scheduled',
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            UNIQUE(user_id, attendance_date)
+        );
+
+        CREATE TABLE IF NOT EXISTS team_members (
+            manager_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            PRIMARY KEY(manager_id, user_id)
         );
         """
     )
-    count = connection.execute("SELECT COUNT(*) AS total FROM visits").fetchone()[
-        "total"
-    ]
+    count = connection.execute(
+        "SELECT COUNT(*) AS total FROM attendance"
+    ).fetchone()["total"]
     if count == 0:
         seed()
 
 
 def reset_database() -> None:
-    connection.execute("DELETE FROM visits")
-    connection.execute("DELETE FROM sqlite_sequence WHERE name = 'visits'")
+    connection.execute("DELETE FROM attendance")
+    connection.execute("DELETE FROM team_members")
+    connection.execute("DELETE FROM sqlite_sequence WHERE name = 'attendance'")
     connection.commit()
     seed()
 

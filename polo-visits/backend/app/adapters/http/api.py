@@ -1,91 +1,60 @@
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Header, Query
 from pydantic import BaseModel
 
-from app.application.visit_service import VisitService
-from app.domain.errors import DailyCapacityReached, MissingRequiredFields, VisitNotFound
-from app.domain.models import VisitCreateCommand, VisitUpdateCommand
+from app.application.attendance_service import AttendanceService
+from app.domain.models import AttendanceUpsertCommand
 
 
-class VisitCreate(BaseModel):
+class AttendanceUpsert(BaseModel):
     user_id: str
-    visitor_name: str
-    visit_date: str
-    start_time: str
-    purpose: str
+    status: str
     notes: str = ""
-    companions: int = 0
 
 
-class VisitUpdate(BaseModel):
-    visitor_name: str
-    visit_date: str
-    start_time: str
-    purpose: str
-    notes: str = ""
-    companions: int = 0
-    status: str = "scheduled"
-
-
-def create_router(service: VisitService) -> APIRouter:
+def create_router(service: AttendanceService) -> APIRouter:
     router = APIRouter()
 
     @router.get("/health")
     async def health():
         return {"status": "ok"}
 
-    @router.get("/api/visits")
-    async def list_visits(
+    @router.get("/api/attendance")
+    async def attendance(
         user_id: str = Query(...),
-        q: str = Query(""),
+        month: str = Query(...),
         x_user: str = Header(..., alias="X-User"),
     ):
-        return service.list_visits(user_id, q)
+        return service.get_month(user_id, month)
 
-    @router.post("/api/visits", status_code=201)
-    async def create_visit(
-        body: VisitCreate,
+    @router.put("/api/attendance/{attendance_date}")
+    async def mark_attendance(
+        attendance_date: str,
+        body: AttendanceUpsert,
         x_user: str = Header(..., alias="X-User"),
     ):
-        command = VisitCreateCommand(**body.model_dump())
-        try:
-            return service.create_visit(command)
-        except MissingRequiredFields as error:
-            raise HTTPException(
-                status_code=400, detail="Campos obrigatorios ausentes"
-            ) from error
-        except DailyCapacityReached as error:
-            raise HTTPException(
-                status_code=409, detail="Capacidade diaria atingida"
-            ) from error
-
-    @router.put("/api/visits/{visit_id}")
-    async def update_visit(
-        visit_id: int,
-        body: VisitUpdate,
-        x_user: str = Header(..., alias="X-User"),
-    ):
-        try:
-            return service.update_visit(
-                visit_id, VisitUpdateCommand(**body.model_dump())
+        return service.mark_day(
+            AttendanceUpsertCommand(
+                user_id=body.user_id,
+                attendance_date=attendance_date,
+                status=body.status,
+                notes=body.notes,
             )
-        except VisitNotFound as error:
-            raise HTTPException(status_code=404, detail="Visita nao encontrada") from error
+        )
 
-    @router.delete("/api/visits/{visit_id}")
-    async def cancel_visit(
-        visit_id: int,
+    @router.delete("/api/attendance/{attendance_date}")
+    async def unmark_attendance(
+        attendance_date: str,
+        user_id: str = Query(...),
         x_user: str = Header(..., alias="X-User"),
     ):
-        try:
-            return service.cancel_visit(visit_id)
-        except VisitNotFound as error:
-            raise HTTPException(status_code=404, detail="Visita nao encontrada") from error
+        return service.unmark_day(user_id, attendance_date)
 
-    @router.get("/api/summary")
-    async def summary(
-        user_id: str,
+    @router.get("/api/team-attendance")
+    async def team_attendance(
+        manager_id: str = Query(...),
+        month: str = Query(...),
         x_user: str = Header(..., alias="X-User"),
     ):
-        return service.summarize(user_id)
+        return service.get_team_month(manager_id, month)
 
     return router

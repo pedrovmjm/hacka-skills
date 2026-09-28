@@ -1,1 +1,1 @@
-"""Domain types for the visits application."""
+"""Domain types for the polo attendance application."""

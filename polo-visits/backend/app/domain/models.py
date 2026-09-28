@@ -1,23 +1,12 @@
 from dataclasses import dataclass
 
 
+MONTHLY_GOAL = 8
+
+
 @dataclass(frozen=True)
-class VisitCreateCommand:
+class AttendanceUpsertCommand:
     user_id: str
-    visitor_name: str
-    visit_date: str
-    start_time: str
-    purpose: str
+    attendance_date: str
+    status: str
     notes: str = ""
-    companions: int = 0
-
-
-@dataclass(frozen=True)
-class VisitUpdateCommand:
-    visitor_name: str
-    visit_date: str
-    start_time: str
-    purpose: str
-    notes: str = ""
-    companions: int = 0
-    status: str = "scheduled"

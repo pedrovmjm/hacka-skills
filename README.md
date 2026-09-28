@@ -138,17 +138,17 @@ Diretório: `langgraph-agent-platform/`
 
 Consulte [as instruções da plataforma de agentes](langgraph-agent-platform/README.md).
 
-### Gestão de idas ao polo
+### Controle de presença no polo
 
 Diretório: `polo-visits/`
 
 - **Stack:** React com Vite no frontend; Python 3.12, FastAPI e SQLite no backend.
-- **Domínio:** agendamento e registro de visitas presenciais a um polo fictício.
-- **Fluxos:** consulta, pesquisa, criação, alteração e cancelamento de visitas, troca de perfil e resumo por status.
-- **Persistência:** SQLite com dados demonstrativos de Ana e Bruno.
+- **Domínio:** registro pessoal de dias trabalhados presencialmente, com meta de 8 dias por mês.
+- **Fluxos:** calendário mensal, marcação de presença ou ausência, correção de registros, progresso individual, troca de perfil e visão consolidada do time para gestores.
+- **Persistência:** SQLite com pessoas, equipes e marcações demonstrativas.
 - **Pontos principais:** `backend/app`, `backend/tests`, `frontend/src` e os Dockerfiles de cada aplicação.
 
-Consulte [as instruções da aplicação de visitas](polo-visits/README.md).
+Consulte [as instruções da aplicação de presença](polo-visits/README.md).
 
 ## Processo esperado da skill
 
@@ -190,7 +190,7 @@ Executar testes, iniciar as aplicações, repetir os fluxos ponta a ponta e acre
 | Cobertura | A análise encontra problemas relevantes de arquitetura, segurança e qualidade, com severidades variadas. |
 | Revisão humana | Nenhum arquivo de implementação é alterado antes da aprovação do relatório. |
 | Refatoração | As causas-raiz aceitas são corrigidas; mudanças apenas cosméticas não bastam. |
-| Preservação | Conversa, HITL, persistência, CRUD de visitas, resumo e interface continuam funcionais. |
+| Preservação | Conversa, HITL, persistência, calendário pessoal, marcações, meta mensal, visão do time e interface continuam funcionais. |
 | Segurança | Os comportamentos indevidos deixam de ser reproduzíveis e passam a ter expectativas seguras. |
 | Testes | Suítes Python e frontend passam, as aplicações iniciam e pelo menos um fluxo completo de cada projeto é verificado. |
 | Rastreabilidade | A entrega final relaciona achado, mudança, teste e resultado. |

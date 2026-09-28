@@ -1,60 +1,144 @@
-def test_lists_demo_visits_and_summary(client, ana_headers):
-    visits = client.get("/api/visits?user_id=ana", headers=ana_headers)
-    assert visits.status_code == 200
-    assert len(visits.json()) == 2
-    assert {item["status"] for item in visits.json()} == {"scheduled", "completed"}
+from app import database
 
-    summary = client.get("/api/summary?user_id=ana", headers=ana_headers)
-    assert summary.status_code == 200
-    assert summary.json()["scheduled"] == 1
-    assert summary.json()["completed"] == 1
 
-    search = client.get(
-        "/api/visits",
-        params={"user_id": "ana", "q": "Aula"},
+def test_health(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_monthly_attendance_summary_uses_seed_data(client, ana_headers):
+    month = database.current_month()
+    response = client.get(
+        "/api/attendance",
+        params={"user_id": "ana", "month": month},
         headers=ana_headers,
     )
-    assert search.status_code == 200
-    assert len(search.json()) == 1
-    assert search.json()[0]["purpose"] == "Aula presencial"
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "user_id": "ana",
+        "month": month,
+        "goal": 8,
+        "present_count": 2,
+        "absent_count": 1,
+        "remaining_count": 6,
+        "progress_percent": 25,
+        "days": response.json()["days"],
+    }
+    assert len(response.json()["days"]) == 3
+    assert set(response.json()["days"][0]) == {
+        "id",
+        "user_id",
+        "attendance_date",
+        "status",
+        "notes",
+        "created_at",
+        "updated_at",
+    }
 
 
-def test_schedules_edits_and_cancels_a_visit(client, ana_headers):
-    created = client.post(
-        "/api/visits",
+def test_marks_updates_and_removes_a_day(client, ana_headers):
+    month = database.current_month()
+    attendance_date = f"{month}-15"
+    created = client.put(
+        f"/api/attendance/{attendance_date}",
         headers=ana_headers,
-        json={
-            "user_id": "ana",
-            "visitor_name": "Ana Demo",
-            "visit_date": "2026-10-15",
-            "start_time": "13:30",
-            "purpose": "Laboratorio presencial",
-            "notes": "Levar notebook de teste",
-            "companions": 0,
-        },
+        json={"user_id": "ana", "status": "present", "notes": "Polo"},
     )
-    assert created.status_code == 201
-    visit_id = created.json()["id"]
+    assert created.status_code == 200
+    assert created.json()["attendance_date"] == attendance_date
+    assert created.json()["status"] == "present"
+    created_at = created.json()["created_at"]
 
     updated = client.put(
-        f"/api/visits/{visit_id}",
+        f"/api/attendance/{attendance_date}",
         headers=ana_headers,
-        json={
-            "visitor_name": "Ana Demo",
-            "visit_date": "2026-10-16",
-            "start_time": "15:00",
-            "purpose": "Laboratorio presencial - turma B",
-            "notes": "Horario atualizado",
-            "companions": 1,
-            "status": "scheduled",
-        },
+        json={"user_id": "ana", "status": "absent", "notes": "Correção"},
     )
     assert updated.status_code == 200
-    assert updated.json()["visit_date"] == "2026-10-16"
+    assert updated.json()["id"] == created.json()["id"]
+    assert updated.json()["created_at"] == created_at
+    assert updated.json()["status"] == "absent"
 
-    cancelled = client.delete(f"/api/visits/{visit_id}", headers=ana_headers)
-    assert cancelled.status_code == 200
-    assert cancelled.json()["status"] == "cancelled"
+    removed = client.delete(
+        f"/api/attendance/{attendance_date}",
+        params={"user_id": "ana"},
+        headers=ana_headers,
+    )
+    assert removed.status_code == 200
+    assert removed.json() == {
+        "attendance_date": attendance_date,
+        "status": "unmarked",
+    }
+    summary = client.get(
+        "/api/attendance",
+        params={"user_id": "ana", "month": month},
+        headers=ana_headers,
+    ).json()
+    assert all(day["attendance_date"] != attendance_date for day in summary["days"])
 
-    summary = client.get("/api/summary?user_id=ana", headers=ana_headers).json()
-    assert summary["cancelled"] == 1
+
+def test_progress_is_capped_at_one_hundred_percent(client, ana_headers):
+    month = database.current_month()
+    for day in range(11, 20):
+        response = client.put(
+            f"/api/attendance/{month}-{day}",
+            headers=ana_headers,
+            json={"user_id": "ana", "status": "present", "notes": ""},
+        )
+        assert response.status_code == 200
+
+    summary = client.get(
+        "/api/attendance",
+        params={"user_id": "ana", "month": month},
+        headers=ana_headers,
+    ).json()
+    assert summary["present_count"] == 11
+    assert summary["remaining_count"] == 0
+    assert summary["progress_percent"] == 100
+
+
+def test_manager_monthly_view_and_manager_without_team(client, ana_headers):
+    month = database.current_month()
+    response = client.get(
+        "/api/team-attendance",
+        params={"manager_id": "ana", "month": month},
+        headers=ana_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["manager_id"] == "ana"
+    assert body["month"] == month
+    assert body["goal"] == 8
+    assert body["team_size"] == 3
+    assert body["team_present_total"] == 6
+    assert body["team_average"] == 2.0
+    assert [member["user_id"] for member in body["members"]] == [
+        "bruno",
+        "carla",
+        "diego",
+    ]
+    assert [member["present_count"] for member in body["members"]] == [2, 4, 0]
+    assert [member["absent_count"] for member in body["members"]] == [1, 0, 1]
+    assert all("days" in member for member in body["members"])
+
+    empty = client.get(
+        "/api/team-attendance",
+        params={"manager_id": "bruno", "month": month},
+        headers=ana_headers,
+    )
+    assert empty.status_code == 200
+    assert empty.json()["team_size"] == 0
+    assert empty.json()["team_average"] == 0
+    assert empty.json()["members"] == []
+
+
+def test_attendance_endpoints_require_x_user(client):
+    month = database.current_month()
+    assert client.get(
+        "/api/attendance", params={"user_id": "ana", "month": month}
+    ).status_code == 422
+    assert client.get(
+        "/api/team-attendance", params={"manager_id": "ana", "month": month}
+    ).status_code == 422

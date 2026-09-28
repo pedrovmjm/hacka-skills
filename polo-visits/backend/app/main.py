@@ -2,11 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.adapters.http.api import create_router
-from app.adapters.persistence.sqlite import SQLiteVisitRepository, connection
-from app.application.visit_service import VisitService
+from app.adapters.persistence.sqlite import SQLiteAttendanceRepository, connection
+from app.application.attendance_service import AttendanceService
 
 
-app = FastAPI(title="Idas ao Polo", version="0.1.0")
+app = FastAPI(title="Presença no Polo", version="0.2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,6 +15,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-repository = SQLiteVisitRepository(connection)
-service = VisitService(repository)
+repository = SQLiteAttendanceRepository(connection)
+service = AttendanceService(repository)
 app.include_router(create_router(service))

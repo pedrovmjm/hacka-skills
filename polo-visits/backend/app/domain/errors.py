@@ -1,14 +1,5 @@
-class VisitError(Exception):
-    """Base exception for visit use cases."""
+"""Domain errors reserved for attendance use cases."""
 
 
-class MissingRequiredFields(VisitError):
-    pass
-
-
-class DailyCapacityReached(VisitError):
-    pass
-
-
-class VisitNotFound(VisitError):
-    pass
+class AttendanceError(Exception):
+    """Base exception for attendance use cases."""

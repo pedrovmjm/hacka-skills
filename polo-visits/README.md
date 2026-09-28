@@ -1,41 +1,99 @@
-# Gestao de idas ao polo
+# Meu Polo — controle de presença
 
-Aplicacao ficticia para planejar e registrar visitas presenciais a um polo. Neste projeto, uma "ida ao polo" e um agendamento com visitante, data, horario, finalidade, observacoes, acompanhantes e status. A interface permite consultar, pesquisar, criar, alterar e cancelar visitas, alem de acompanhar um resumo.
+Aplicação fictícia para registrar os dias de trabalho presencial no polo. Cada pessoa acompanha um calendário mensal, marca se foi ou não ao polo e monitora o progresso até a meta de **8 dias por mês**.
 
-Todos os nomes e registros sao demonstrativos.
+O app também possui uma visão de gestor, com o consolidado mensal da equipe e o progresso individual de cada integrante.
 
-## Estrutura e pre-requisitos
+> Projeto demonstrativo, sem vínculo com o Itaú. A identidade branca, laranja e azul é usada somente como referência visual para o desafio.
 
-- `backend/`: Python 3.12+, FastAPI e SQLite.
-- `frontend/`: Node.js 22+, React e Vite.
-- Opcional: Docker e Docker Compose.
+## Funcionalidades
 
-## Backend
+### Minha presença
 
-O backend está organizado em arquitetura hexagonal. As dependências apontam para o
-núcleo da aplicação, enquanto FastAPI e SQLite ficam nas bordas:
+- calendário mensal com navegação entre meses;
+- meta de 8 dias presenciais;
+- total realizado, ausências, dias restantes e percentual da meta;
+- marcação de cada data como `Fui ao polo` ou `Não fui`;
+- edição e remoção de marcações feitas por engano;
+- observação opcional por dia;
+- troca entre perfis fictícios.
+
+### Visão do time
+
+- consolidado mensal da equipe;
+- quantidade de dias presenciais por pessoa;
+- progresso individual em relação à meta de 8 dias;
+- total e média de presenças do time;
+- detalhe dos dias marcados por integrante.
+
+## Execução rápida com Docker
+
+Na raiz do repositório:
+
+```bash
+docker compose up --build -d polo-api polo-web
+docker compose ps
+```
+
+Acesse:
+
+- interface: `http://localhost:5173`;
+- documentação da API: `http://localhost:8001/docs`;
+- health check: `http://localhost:8001/health`.
+
+Para encerrar:
+
+```bash
+docker compose down
+```
+
+Use `docker compose down -v` somente quando quiser apagar os bancos persistidos e recriar os dados fictícios.
+
+## Arquitetura do backend
+
+O backend usa arquitetura hexagonal. FastAPI e SQLite ficam nas bordas, enquanto os casos de uso dependem apenas das portas do domínio.
 
 ```text
 backend/app/
-├── domain/                    # Modelos, erros e porta de persistência
-├── application/               # Casos de uso de visitas
+├── domain/                    # Modelos, erros e portas
+├── application/               # Casos de uso de presença
 ├── adapters/
 │   ├── http/                  # Adaptador de entrada FastAPI
 │   └── persistence/           # Adaptador de saída SQLite
 ├── main.py                    # Composição das dependências
-└── database.py                # Fachada de compatibilidade do legado
+└── database.py                # Fachada de compatibilidade
 ```
-
-Fluxo de dependências:
 
 ```text
 HTTP/FastAPI -> casos de uso -> porta do domínio <- SQLite
 ```
 
-Essa organização é propositalmente apenas estrutural. Os comportamentos legados,
-inclusive os inadequados usados na avaliação da futura skill, continuam preservados.
+Essa organização é estrutural. Os comportamentos inseguros usados pelo benchmark continuam intencionalmente preservados para que a futura skill consiga encontrá-los e corrigi-los.
 
-Instalacao no PowerShell:
+## API
+
+| Método | Caminho | Uso |
+| --- | --- | --- |
+| GET | `/health` | Verifica o estado da API. |
+| GET | `/api/attendance?user_id=ana&month=2026-09` | Retorna calendário e progresso pessoal do mês. |
+| PUT | `/api/attendance/{data}` | Cria ou altera a marcação de uma data. |
+| DELETE | `/api/attendance/{data}?user_id=ana` | Remove uma marcação feita por engano. |
+| GET | `/api/team-attendance?manager_id=ana&month=2026-09` | Retorna o consolidado da equipe. |
+
+As requisições usam perfis fictícios e enviam o cabeçalho `X-User`.
+
+Exemplo de marcação:
+
+```bash
+curl -X PUT http://localhost:8001/api/attendance/2026-09-28 \
+  -H "Content-Type: application/json" \
+  -H "X-User: ana" \
+  -d '{"user_id":"ana","status":"present","notes":"Trabalho no polo"}'
+```
+
+## Instalação nativa do backend
+
+No PowerShell:
 
 ```powershell
 cd polo-visits\backend
@@ -45,49 +103,25 @@ python -m pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8001
 ```
 
-No macOS/Linux, use `source .venv/bin/activate`. A documentacao interativa fica em `http://localhost:8001/docs`. O banco padrao e `backend/data/polo.db`; `POLO_DB_PATH` permite escolher outro arquivo.
+No macOS ou Linux, ative o ambiente com `source .venv/bin/activate`.
 
-Endpoints:
+O banco padrão fica em `backend/data/polo.db`. A variável `POLO_DB_PATH` permite selecionar outro arquivo.
 
-| Metodo | Caminho | Uso |
-| --- | --- | --- |
-| GET | `/health` | Estado da API. |
-| GET | `/api/visits?user_id=ana&q=` | Lista e pesquisa visitas. |
-| POST | `/api/visits` | Agenda uma ida. |
-| PUT | `/api/visits/{id}` | Altera um agendamento. |
-| DELETE | `/api/visits/{id}` | Cancela um agendamento. |
-| GET | `/api/summary?user_id=ana` | Resume quantidades por status. |
-
-As chamadas de demonstracao enviam `X-User: ana` ou `X-User: bruno`. Exemplo:
+### Testes do backend
 
 ```bash
-curl -s "http://localhost:8001/api/visits?user_id=ana" -H "X-User: ana"
-
-curl -s -X POST http://localhost:8001/api/visits \
-  -H "Content-Type: application/json" -H "X-User: ana" \
-  -d '{"user_id":"ana","visitor_name":"Ana Demo","visit_date":"2026-10-15","start_time":"13:30","purpose":"Laboratorio presencial","notes":"Levar notebook","companions":0}'
-```
-
-Dados iniciais:
-
-- Ana Demo: uma visita agendada em `2026-10-05` e uma concluida em `2026-09-12`.
-- Bruno Demo: uma visita agendada em `2026-10-06`.
-
-Testes do backend:
-
-```bash
-cd backend
+cd polo-visits/backend
 python -m pytest -q
 ```
 
-Alternativa inteiramente em Docker:
+Alternativa com Docker:
 
 ```bash
-docker build --target test -t polo-api-test backend
+docker build --target test -t polo-api-test polo-visits/backend
 docker run --rm polo-api-test
 ```
 
-## Frontend
+## Instalação nativa do frontend
 
 Com a API na porta 8001:
 
@@ -97,47 +131,40 @@ npm install
 npm run dev
 ```
 
-Abra `http://localhost:5173`. Use o seletor de perfil para navegar entre os dados ficticios, preencha o formulario para agendar, e use os botoes dos cards para alterar ou cancelar.
+Acesse `http://localhost:5173`.
 
-Testes e build:
+### Testes e build
 
 ```bash
 npm test
 npm run build
 ```
 
-Alternativa de teste em Docker:
+Alternativa com Docker:
 
 ```bash
-docker build --target test -t polo-web-test frontend
+docker build --target test -t polo-web-test polo-visits/frontend
 docker run --rm polo-web-test
 ```
 
-E2E real do navegador contra os servicos do Compose:
+### Teste ponta a ponta
+
+Com os serviços do Compose em execução:
 
 ```bash
-# Na raiz do repositorio
-docker compose up --build -d
 docker build --target e2e -t polo-web-e2e polo-visits/frontend
 docker run --rm --add-host=host.docker.internal:host-gateway polo-web-e2e
 ```
 
-O harness reescreve apenas o host da API dentro do container do navegador; as requisicoes continuam chegando ao FastAPI real publicado na porta 8001.
+## Roteiro manual de validação
 
-## Docker Compose
-
-A partir da raiz do repositorio:
-
-```bash
-docker compose up --build -d polo-api polo-web
-```
-
-Interface: `http://localhost:5173`; API: `http://localhost:8001/docs`.
-
-## Fluxo manual de validacao
-
-1. Abra a interface como Ana e confirme o resumo e as duas visitas iniciais.
-2. Agende uma visita futura e confirme que ela aparece na lista e no resumo.
-3. Abra a edicao, altere data ou finalidade e salve.
-4. Cancele o agendamento e confirme o novo status no resumo.
-5. Troque para Bruno e confirme a carga do outro conjunto ficticio.
+1. Abra `http://localhost:5173` na aba **Minha presença**.
+2. Confirme a meta mensal de 8 dias e as marcações iniciais.
+3. Selecione um dia e marque **Fui ao polo**.
+4. Altere a mesma data para **Não fui**.
+5. Limpe a marcação e confirme que o dia voltou ao estado neutro.
+6. Navegue para o mês anterior e retorne ao atual.
+7. Troque entre os perfis fictícios.
+8. Abra a aba **Visão do time**.
+9. Confira total, média e progresso de cada integrante.
+10. Selecione uma pessoa e confira os dias registrados no calendário ou detalhe mensal.

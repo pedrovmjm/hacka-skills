@@ -1,11 +1,9 @@
-"""Compatibility facade for the legacy test and tooling imports.
-
-New code depends on the persistence port and SQLite adapter directly.
-"""
+"""Compatibility facade for test and tooling imports."""
 
 from app.adapters.persistence.sqlite import (
     DB_PATH,
     connection,
+    current_month,
     initialize_database,
     reset_database,
     row_to_dict,
@@ -16,6 +14,7 @@ from app.adapters.persistence.sqlite import (
 __all__ = [
     "DB_PATH",
     "connection",
+    "current_month",
     "initialize_database",
     "reset_database",
     "row_to_dict",

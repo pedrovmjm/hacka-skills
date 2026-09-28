@@ -1,80 +1,74 @@
 import { expect, test } from "@playwright/test";
 
 
-async function connectLiveApi(page) {
+test.beforeEach(async ({ page }) => {
+  // O navegador roda em container; apenas o host é reescrito para alcançar a
+  // API real publicada pelo Compose. Nenhuma resposta é simulada.
   await page.route("http://localhost:8001/**", async (route) => {
-    const target = route.request().url().replace(
-      "http://localhost:8001",
-      "http://host.docker.internal:8001",
-    );
-    await route.continue({ url: target });
+    await route.continue({
+      url: route.request().url().replace("localhost", "host.docker.internal"),
+    });
   });
-}
-
-
-test("completes the visit lifecycle in the browser", async ({ page }) => {
-  await connectLiveApi(page);
-
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Planeje suas idas/i })).toBeVisible();
-  await expect(page.getByText("Aula presencial")).toBeVisible();
-
-  const profile = page.getByLabel("Perfil de demonstracao");
-  await profile.selectOption("bruno");
-  await expect(page.getByText("Atendimento academico")).toBeVisible();
-  await profile.selectOption("ana");
-  await expect(page.getByText("Aula presencial")).toBeVisible();
-
-  const cancelledBefore = Number(
-    await page.locator(".summary article").filter({ hasText: "Canceladas" }).locator("strong").textContent(),
-  );
-  const marker = Date.now().toString();
-  const purpose = `Validacao navegador ${marker}`;
-  const updatedPurpose = `${purpose} atualizada`;
-
-  await page.getByLabel("Nome do visitante").fill("Ana E2E");
-  await page.getByLabel("Data").fill("2026-12-10");
-  await page.getByLabel("Horario").fill("16:20");
-  await page.getByLabel("Finalidade").fill(purpose);
-  await page.getByLabel("Acompanhantes").fill("1");
-  await page.getByLabel("Observacoes").fill("Criada pelo fluxo automatizado");
-  await page.getByRole("button", { name: "Agendar ida" }).click();
-  await expect(page.getByRole("status")).toContainText("Ida agendada");
-
-  let card = page.locator(".visit-card").filter({ hasText: purpose });
-  await expect(card).toBeVisible();
-  await card.getByRole("button", { name: "Alterar" }).click();
-  await page.getByLabel("Data").fill("2026-12-11");
-  await page.getByLabel("Finalidade").fill(updatedPurpose);
-  await page.getByRole("button", { name: "Salvar alteracoes" }).click();
-  await expect(page.getByRole("status")).toContainText("Agendamento atualizado");
-
-  card = page.locator(".visit-card").filter({ hasText: updatedPurpose });
-  await expect(card).toContainText("2026-12-11");
-  page.once("dialog", (dialog) => dialog.accept());
-  await card.getByRole("button", { name: "Cancelar" }).click();
-  await expect(page.getByRole("status")).toContainText("Agendamento cancelado");
-  await expect(page.locator(".visit-card").filter({ hasText: updatedPurpose })).toContainText("Cancelada");
-  await expect(
-    page.locator(".summary article").filter({ hasText: "Canceladas" }).locator("strong"),
-  ).toHaveText(String(cancelledBefore + 1));
 });
 
 
-test("renders persisted notes in the browser", async ({ page }) => {
-  await connectLiveApi(page);
+test("registra, altera e limpa uma marcação usando a API real", async ({
+  page,
+  request,
+}) => {
+  const now = new Date();
+  const targetDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-20`;
+  await request.delete(
+    `http://host.docker.internal:8001/api/attendance/${targetDate}?user_id=ana`,
+    { headers: { "X-User": "ana" } },
+  );
   await page.goto("/");
-  await expect(page.getByText("Aula presencial")).toBeVisible();
 
-  const marker = Date.now().toString();
-  const note = `<img src="missing-${marker}" onerror="document.body.dataset.noteCheck='${marker}'">`;
-  await page.getByLabel("Nome do visitante").fill("Ana E2E");
-  await page.getByLabel("Data").fill("2026-12-20");
-  await page.getByLabel("Horario").fill("10:10");
-  await page.getByLabel("Finalidade").fill(`Nota persistida ${marker}`);
-  await page.getByLabel("Observacoes").fill(note);
-  await page.getByRole("button", { name: "Agendar ida" }).click();
+  await expect(
+    page.getByRole("heading", { name: /acompanhe sua presença/i }),
+  ).toBeVisible();
 
-  await expect(page.getByRole("status")).toContainText("Ida agendada");
-  await expect(page.locator("body")).toHaveAttribute("data-note-check", marker);
+  const targetDay = page.getByRole("gridcell", {
+    name: /20 de .*sem marcação/i,
+  });
+  await targetDay.click();
+  await page.locator('input[name="status"][value="present"]').check();
+  await page
+    .getByPlaceholder("Ex.: reunião com o time")
+    .fill("Dia de integração E2E");
+  await page.getByRole("button", { name: "Salvar marcação" }).click();
+  await expect(page.getByRole("status")).toContainText("Marcação salva");
+
+  await page.getByRole("gridcell", { name: /20 de .*fui ao polo/i }).click();
+  await page.locator('input[name="status"][value="absent"]').check();
+  await page.getByRole("button", { name: "Salvar marcação" }).click();
+  await expect(page.getByRole("status")).toContainText("Marcação salva");
+
+  await page.getByRole("gridcell", { name: /20 de .*não fui/i }).click();
+  await page.getByRole("button", { name: "Limpar marcação" }).click();
+  await expect(
+    page.getByRole("gridcell", { name: /20 de .*sem marcação/i }),
+  ).toBeVisible();
+});
+
+
+test("navega, troca perfil e consulta a visão real do time", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Próximo mês" }).click();
+  await page.getByRole("button", { name: "Mês anterior" }).click();
+
+  await page.getByLabel("Perfil fictício").selectOption("bruno");
+  await expect(page.getByText("Olá, Bruno")).toBeVisible();
+  await page.getByLabel("Perfil fictício").selectOption("ana");
+
+  await page.getByRole("button", { name: /visão do time/i }).click();
+  await expect(page.getByText("Bruno Demo")).toBeVisible();
+  await expect(page.getByText("Carla Demo")).toBeVisible();
+  await expect(page.getByText("Diego Demo")).toBeVisible();
+
+  await page.getByRole("button", { name: /Bruno Demo/i }).click();
+  await expect(
+    page.getByRole("heading", { name: "Calendário de Bruno Demo" }),
+  ).toBeVisible();
 });
