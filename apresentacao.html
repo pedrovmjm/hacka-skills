@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Motivação do desafio de skills para avaliação de software criado com IA."
+    />
+    <title>Do uso de IA à confiança no resultado</title>
+    <style>
+      :root {
+        --orange: #ec7000;
+        --orange-dark: #c95700;
+        --orange-light: #fff1e5;
+        --ink: #24201d;
+        --muted: #6b625c;
+        --line: #eadfd6;
+        --white: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        overflow: hidden;
+        background: #f7f4f1;
+        color: var(--ink);
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .deck {
+        position: relative;
+        height: 100%;
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: clamp(1rem, 2vw, 1.75rem);
+        padding: clamp(1.5rem, 3vw, 3rem) clamp(1.5rem, 7vw, 7rem);
+        overflow: auto;
+        background:
+          radial-gradient(circle at 92% 8%, rgba(236, 112, 0, 0.12), transparent 26%),
+          var(--white);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(3rem);
+        transition: opacity 280ms ease, transform 280ms ease, visibility 280ms;
+      }
+
+      .slide[aria-hidden="false"] {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(0);
+      }
+
+      .slide::before {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 0.75rem;
+        height: 100%;
+        background: var(--orange);
+        content: "";
+      }
+
+      .topbar,
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: var(--orange-dark);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .counter {
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+        gap: clamp(2rem, 6vw, 6rem);
+        align-items: center;
+        width: min(100%, 76rem);
+        margin: auto;
+      }
+
+      h1,
+      h2 {
+        max-width: 12ch;
+        margin: 0;
+        font-size: clamp(2.7rem, 5.4vw, 5.4rem);
+        line-height: 0.98;
+        letter-spacing: -0.055em;
+      }
+
+      h2 {
+        max-width: 13ch;
+        font-size: clamp(2.5rem, 4.8vw, 4.8rem);
+      }
+
+      .accent {
+        color: var(--orange);
+      }
+
+      .lead {
+        max-width: 43rem;
+        margin: 1.1rem 0 0;
+        color: var(--muted);
+        font-size: clamp(1rem, 1.5vw, 1.3rem);
+        line-height: 1.45;
+      }
+
+      .stack {
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .topic {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        min-height: 4.25rem;
+        padding: 1rem 1.2rem;
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 0.8rem 2rem rgba(68, 45, 26, 0.06);
+      }
+
+      .topic-index {
+        display: grid;
+        flex: 0 0 2.25rem;
+        width: 2.25rem;
+        height: 2.25rem;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--orange-light);
+        color: var(--orange-dark);
+        font-size: 0.82rem;
+        font-weight: 800;
+      }
+
+      .topic strong {
+        display: block;
+        margin-bottom: 0.2rem;
+      }
+
+      .topic span:last-child {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .gap-card {
+        margin-top: 0.8rem;
+        padding: 1rem 1.25rem;
+        border-left: 0.3rem solid var(--orange);
+        border-radius: 0 1rem 1rem 0;
+        background: var(--orange-light);
+        color: var(--ink);
+        font-size: clamp(1rem, 1.35vw, 1.18rem);
+        line-height: 1.45;
+      }
+
+      .path {
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 4.5rem 1fr;
+        gap: 1rem;
+        align-items: center;
+        padding: 1rem 1.2rem;
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+        background: var(--white);
+      }
+
+      .step:first-child {
+        border-color: var(--orange);
+        background: var(--orange-light);
+      }
+
+      .step-label {
+        color: var(--orange-dark);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .step strong {
+        display: block;
+        margin-bottom: 0.2rem;
+        font-size: 1.05rem;
+      }
+
+      .step p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.35;
+      }
+
+      .focus {
+        grid-column: 1 / -1;
+        margin-top: 0.5rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: 1rem;
+        background: var(--ink);
+        color: var(--white);
+        font-size: clamp(1rem, 1.4vw, 1.2rem);
+        line-height: 1.45;
+      }
+
+      .focus strong {
+        color: #ff9d4d;
+      }
+
+      .footer {
+        min-height: 2.75rem;
+        border-top: 1px solid var(--line);
+        padding-top: 1rem;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .brand-mark {
+        width: 0.9rem;
+        height: 0.9rem;
+        border-radius: 0.2rem;
+        background: var(--orange);
+        transform: rotate(45deg);
+      }
+
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+      }
+
+      .dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: #d7cdc6;
+        cursor: pointer;
+      }
+
+      .dot[aria-current="true"] {
+        width: 1.6rem;
+        border-radius: 1rem;
+        background: var(--orange);
+      }
+
+      .nav-button {
+        display: grid;
+        width: 2.5rem;
+        height: 2.5rem;
+        margin-left: 0.25rem;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        background: var(--white);
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .nav-button:hover:not(:disabled) {
+        border-color: var(--orange);
+        color: var(--orange-dark);
+      }
+
+      .nav-button:disabled {
+        cursor: default;
+        opacity: 0.35;
+      }
+
+      button:focus-visible {
+        outline: 3px solid rgba(236, 112, 0, 0.38);
+        outline-offset: 3px;
+      }
+
+      @media (max-width: 780px) {
+        .slide {
+          padding: 1.4rem 1.5rem 1.25rem 2rem;
+        }
+
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 1.5rem;
+          align-content: center;
+        }
+
+        h1,
+        h2 {
+          font-size: clamp(2.5rem, 12vw, 4rem);
+        }
+
+        .stack,
+        .path {
+          gap: 0.55rem;
+        }
+
+        .topic,
+        .step {
+          min-height: auto;
+          padding: 0.8rem 1rem;
+        }
+
+        .focus {
+          margin-top: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .slide {
+          transition: none;
+        }
+      }
+
+      @media print {
+        body {
+          overflow: visible;
+          background: white;
+        }
+
+        .deck {
+          height: auto;
+        }
+
+        .slide,
+        .slide[aria-hidden="true"] {
+          position: relative;
+          min-height: 100vh;
+          break-after: page;
+          opacity: 1;
+          visibility: visible;
+          transform: none;
+        }
+
+        .controls {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck" aria-label="Apresentação: do uso de IA à confiança no resultado">
+      <section class="slide" aria-hidden="false" aria-labelledby="slide-1-title">
+        <header class="topbar">
+          <p class="eyebrow">O ponto de partida</p>
+          <span class="counter">01 / 02</span>
+        </header>
+
+        <div class="hero">
+          <div>
+            <h1 id="slide-1-title">Aprendemos as peças. Agora precisamos <span class="accent">provar o resultado.</span></h1>
+            <p class="lead">
+              Já discutimos controle de custo de tokens, context engineering e harnesses. O próximo passo é sair do conceito e colocar uma capacidade concreta em prática.
+            </p>
+            <div class="gap-card">
+              Com ferramentas como Devin e outros agentes já presentes no desenvolvimento, a pergunta deixa de ser apenas “a IA consegue fazer?” e passa a ser <strong>“podemos confiar no que foi feito?”</strong>
+            </div>
+          </div>
+
+          <div class="stack" aria-label="Temas já estudados">
+            <div class="topic">
+              <span class="topic-index">01</span>
+              <div><strong>Custo de tokens</strong><span>Controlar consumo e eficiência</span></div>
+            </div>
+            <div class="topic">
+              <span class="topic-index">02</span>
+              <div><strong>Context engineering</strong><span>Entregar o contexto certo ao agente</span></div>
+            </div>
+            <div class="topic">
+              <span class="topic-index">03</span>
+              <div><strong>Harness</strong><span>Orquestrar regras, ferramentas e validações</span></div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="footer">
+          <span class="brand"><span class="brand-mark" aria-hidden="true"></span> Engenharia de software com IA</span>
+          <nav class="controls" aria-label="Navegação dos slides">
+            <button class="dot" type="button" aria-label="Ir para o slide 1" aria-current="true" data-slide="0"></button>
+            <button class="dot" type="button" aria-label="Ir para o slide 2" aria-current="false" data-slide="1"></button>
+            <button class="nav-button previous" type="button" aria-label="Slide anterior" disabled>←</button>
+            <button class="nav-button next" type="button" aria-label="Próximo slide">→</button>
+          </nav>
+        </footer>
+      </section>
+
+      <section class="slide" aria-hidden="true" aria-labelledby="slide-2-title">
+        <header class="topbar">
+          <p class="eyebrow">A estratégia</p>
+          <span class="counter">02 / 02</span>
+        </header>
+
+        <div class="hero">
+          <div>
+            <h2 id="slide-2-title">Vamos construir o harness <span class="accent">de trás para frente.</span></h2>
+            <p class="lead">
+              Começamos pela avaliação do trabalho produzido por IA. Depois, evoluímos os controles até formar um harness completo para o ciclo de desenvolvimento.
+            </p>
+          </div>
+
+          <div class="path" aria-label="Evolução planejada do harness">
+            <div class="step">
+              <span class="step-label">Agora</span>
+              <div><strong>Avaliar</strong><p>Reconhecer, auditar e validar o projeto com evidências.</p></div>
+            </div>
+            <div class="step">
+              <span class="step-label">Próximo</span>
+              <div><strong>Padronizar</strong><p>Transformar critérios e aprendizados em controles reutilizáveis.</p></div>
+            </div>
+            <div class="step">
+              <span class="step-label">Depois</span>
+              <div><strong>Orquestrar</strong><p>Conectar contexto, custos, ferramentas, gates e feedback.</p></div>
+            </div>
+          </div>
+
+          <div class="focus">
+            <strong>Foco de hoje:</strong> três skills para avaliar o que foi feito no projeto — reconhecimento, auditoria e refatoração com validação — formando o primeiro bloco do nosso harness.
+          </div>
+        </div>
+
+        <footer class="footer">
+          <span class="brand"><span class="brand-mark" aria-hidden="true"></span> Começar pela confiança</span>
+          <nav class="controls" aria-label="Navegação dos slides">
+            <button class="dot" type="button" aria-label="Ir para o slide 1" aria-current="false" data-slide="0"></button>
+            <button class="dot" type="button" aria-label="Ir para o slide 2" aria-current="true" data-slide="1"></button>
+            <button class="nav-button previous" type="button" aria-label="Slide anterior">←</button>
+            <button class="nav-button next" type="button" aria-label="Próximo slide" disabled>→</button>
+          </nav>
+        </footer>
+      </section>
+    </main>
+
+    <script>
+      const slides = [...document.querySelectorAll(".slide")];
+      let currentSlide = 0;
+
+      function showSlide(index) {
+        currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+
+        slides.forEach((slide, slideIndex) => {
+          const isCurrent = slideIndex === currentSlide;
+          slide.setAttribute("aria-hidden", String(!isCurrent));
+          slide.querySelectorAll(".dot").forEach((dot) => {
+            dot.setAttribute("aria-current", String(Number(dot.dataset.slide) === currentSlide));
+          });
+          slide.querySelector(".previous").disabled = currentSlide === 0;
+          slide.querySelector(".next").disabled = currentSlide === slides.length - 1;
+        });
+      }
+
+      document.querySelectorAll(".dot").forEach((dot) => {
+        dot.addEventListener("click", () => showSlide(Number(dot.dataset.slide)));
+      });
+
+      document.querySelectorAll(".previous").forEach((button) => {
+        button.addEventListener("click", () => showSlide(currentSlide - 1));
+      });
+
+      document.querySelectorAll(".next").forEach((button) => {
+        button.addEventListener("click", () => showSlide(currentSlide + 1));
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowRight" || event.key === "PageDown") showSlide(currentSlide + 1);
+        if (event.key === "ArrowLeft" || event.key === "PageUp") showSlide(currentSlide - 1);
+        if (event.key === "Home") showSlide(0);
+        if (event.key === "End") showSlide(slides.length - 1);
+      });
+
+      const requestedSlide = Number(new URLSearchParams(window.location.search).get("slide"));
+      if (requestedSlide >= 1 && requestedSlide <= slides.length) showSlide(requestedSlide - 1);
+    </script>
+  </body>
+</html>
