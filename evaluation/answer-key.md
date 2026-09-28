@@ -160,21 +160,21 @@ Categorias cobertas: autorização, acesso a arquivos, XSS, isolamento de estado
 
 - **Categoria / severidade:** integridade e auditabilidade — **MEDIUM**.
 - **Arquivo/linhas:** `polo-visits/backend/app/adapters/persistence/sqlite.py:41-73`.
-- **Evidência e reprodução:** o upsert sobrescreve status/notas do mesmo dia e o DELETE remove definitivamente o registro; não há evento, versão, autor ou motivo da correção.
+- **Evidência e reprodução:** o upsert sobrescreve as notas do mesmo dia e o DELETE remove definitivamente a confirmação; não há evento, versão, autor ou motivo da correção.
 - **Esperado / atual:** esperado preservar histórico de alterações relevante para relatórios gerenciais; atualmente um registro pode ser reescrito ou apagado sem vestígio.
 - **Impacto:** relatórios não auditáveis, dificuldade de investigar erros e possibilidade de manipulação retroativa.
 - **Correção esperada:** histórico append-only ou tabela de auditoria com ator, data, valor anterior, novo valor e motivo; restringir alterações fora da janela permitida.
 - **Demonstração:** marque, altere e remova a mesma data e consulte diretamente o banco: apenas o último estado — ou nenhum — permanece.
 
-### P2-05 — Data, mês, status, usuário e notas não têm invariantes de domínio
+### P2-05 — Data, mês, usuário e notas não têm invariantes de domínio
 
 - **Categoria / severidade:** segurança/qualidade, validação — **MEDIUM**.
 - **Arquivo/linhas:** `polo-visits/backend/app/adapters/http/api.py:8-12`; `app/domain/models.py:8-13`; `app/application/attendance_service.py:33-35`.
-- **Evidência e reprodução:** a API aceita `amanha-talvez`, `talvez-presente`, usuário inexistente e notas sem limite.
-- **Esperado / atual:** esperado data ISO válida, mês coerente, enum de status, usuário conhecido e limites de texto; atualmente todos são strings livres.
+- **Evidência e reprodução:** a API aceita `amanha-talvez`, usuário inexistente e notas sem limite.
+- **Esperado / atual:** esperado data ISO válida, mês coerente, usuário conhecido e limites de texto; atualmente esses valores são strings livres.
 - **Impacto:** registros impossíveis, contagens inconsistentes e crescimento descontrolado do banco.
 - **Correção esperada:** value objects/tipos de domínio, validação Pydantic e constraints equivalentes no SQLite.
-- **Demonstração:** `tests/test_observed_behavior.py::test_payload_keeps_unvalidated_status_date_and_notes`.
+- **Demonstração:** `tests/test_observed_behavior.py::test_payload_keeps_unvalidated_date_user_and_notes`.
 
 ### P2-06 — CORS permite qualquer origem com credenciais
 
@@ -251,7 +251,7 @@ Categorias cobertas: autorização, acesso a arquivos, XSS, isolamento de estado
 
 - [ ] Interface carrega o calendário e os dados fictícios do perfil selecionado.
 - [ ] Meta mensal de 8 dias, realizado, restante e percentual são consistentes.
-- [ ] Pessoa autorizada pode marcar presença ou ausência e corrigir uma data.
+- [ ] Pessoa autorizada pode confirmar presença, editar a observação e remover uma confirmação feita por engano.
 - [ ] Troca entre Ana e Bruno não mistura nem autoriza operações cruzadas.
 - [ ] Aba gerencial exige papel e vínculo real com a equipe.
 - [ ] Total, média e progresso de Bruno, Carla e Diego são consistentes.

@@ -8,5 +8,4 @@ MONTHLY_GOAL = 8
 class AttendanceUpsertCommand:
     user_id: str
     attendance_date: str
-    status: str
     notes: str = ""

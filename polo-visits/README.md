@@ -1,6 +1,6 @@
 # Meu Polo — controle de presença
 
-Aplicação fictícia para registrar os dias de trabalho presencial no polo. Cada pessoa acompanha um calendário mensal, marca se foi ou não ao polo e monitora o progresso até a meta de **8 dias por mês**.
+Aplicação fictícia para confirmar os dias de trabalho presencial no polo. Cada pessoa acompanha um calendário mensal, confirma quando foi ao polo e monitora o progresso até a meta de **8 dias por mês**.
 
 O app também possui uma visão de gestor, com o consolidado mensal da equipe e o progresso individual de cada integrante.
 
@@ -12,9 +12,9 @@ O app também possui uma visão de gestor, com o consolidado mensal da equipe e 
 
 - calendário mensal com navegação entre meses;
 - meta de 8 dias presenciais;
-- total realizado, ausências, dias restantes e percentual da meta;
-- marcação de cada data como `Fui ao polo` ou `Não fui`;
-- edição e remoção de marcações feitas por engano;
+- total realizado, dias restantes e percentual da meta;
+- confirmação de presença em cada data;
+- edição da observação e remoção de confirmações feitas por engano;
 - observação opcional por dia;
 - troca entre perfis fictícios.
 
@@ -24,7 +24,7 @@ O app também possui uma visão de gestor, com o consolidado mensal da equipe e 
 - quantidade de dias presenciais por pessoa;
 - progresso individual em relação à meta de 8 dias;
 - total e média de presenças do time;
-- detalhe dos dias marcados por integrante.
+- detalhe das presenças confirmadas por integrante.
 
 ## Execução rápida com Docker
 
@@ -76,19 +76,19 @@ Essa organização é estrutural. Os comportamentos inseguros usados pelo benchm
 | --- | --- | --- |
 | GET | `/health` | Verifica o estado da API. |
 | GET | `/api/attendance?user_id=ana&month=2026-09` | Retorna calendário e progresso pessoal do mês. |
-| PUT | `/api/attendance/{data}` | Cria ou altera a marcação de uma data. |
-| DELETE | `/api/attendance/{data}?user_id=ana` | Remove uma marcação feita por engano. |
+| PUT | `/api/attendance/{data}` | Confirma a presença ou atualiza sua observação. |
+| DELETE | `/api/attendance/{data}?user_id=ana` | Remove uma confirmação feita por engano. |
 | GET | `/api/team-attendance?manager_id=ana&month=2026-09` | Retorna o consolidado da equipe. |
 
 As requisições usam perfis fictícios e enviam o cabeçalho `X-User`.
 
-Exemplo de marcação:
+Exemplo de confirmação:
 
 ```bash
 curl -X PUT http://localhost:8001/api/attendance/2026-09-28 \
   -H "Content-Type: application/json" \
   -H "X-User: ana" \
-  -d '{"user_id":"ana","status":"present","notes":"Trabalho no polo"}'
+  -d '{"user_id":"ana","notes":"Trabalho no polo"}'
 ```
 
 ## Instalação nativa do backend
@@ -159,10 +159,10 @@ docker run --rm --add-host=host.docker.internal:host-gateway polo-web-e2e
 ## Roteiro manual de validação
 
 1. Abra `http://localhost:5173` na aba **Minha presença**.
-2. Confirme a meta mensal de 8 dias e as marcações iniciais.
-3. Selecione um dia e marque **Fui ao polo**.
-4. Altere a mesma data para **Não fui**.
-5. Limpe a marcação e confirme que o dia voltou ao estado neutro.
+2. Confira a meta mensal de 8 dias e as confirmações iniciais.
+3. Selecione um dia e clique em **Confirmar presença**.
+4. Abra a mesma data e altere a observação.
+5. Remova a confirmação e verifique que o dia voltou ao estado neutro.
 6. Navegue para o mês anterior e retorne ao atual.
 7. Troque entre os perfis fictícios.
 8. Abra a aba **Visão do time**.

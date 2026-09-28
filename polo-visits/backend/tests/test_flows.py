@@ -21,12 +21,11 @@ def test_monthly_attendance_summary_uses_seed_data(client, ana_headers):
         "month": month,
         "goal": 8,
         "present_count": 2,
-        "absent_count": 1,
         "remaining_count": 6,
         "progress_percent": 25,
         "days": response.json()["days"],
     }
-    assert len(response.json()["days"]) == 3
+    assert len(response.json()["days"]) == 2
     assert set(response.json()["days"][0]) == {
         "id",
         "user_id",
@@ -44,7 +43,7 @@ def test_marks_updates_and_removes_a_day(client, ana_headers):
     created = client.put(
         f"/api/attendance/{attendance_date}",
         headers=ana_headers,
-        json={"user_id": "ana", "status": "present", "notes": "Polo"},
+        json={"user_id": "ana", "notes": "Polo"},
     )
     assert created.status_code == 200
     assert created.json()["attendance_date"] == attendance_date
@@ -54,12 +53,13 @@ def test_marks_updates_and_removes_a_day(client, ana_headers):
     updated = client.put(
         f"/api/attendance/{attendance_date}",
         headers=ana_headers,
-        json={"user_id": "ana", "status": "absent", "notes": "Correção"},
+        json={"user_id": "ana", "notes": "Observação corrigida"},
     )
     assert updated.status_code == 200
     assert updated.json()["id"] == created.json()["id"]
     assert updated.json()["created_at"] == created_at
-    assert updated.json()["status"] == "absent"
+    assert updated.json()["status"] == "present"
+    assert updated.json()["notes"] == "Observação corrigida"
 
     removed = client.delete(
         f"/api/attendance/{attendance_date}",
@@ -85,7 +85,7 @@ def test_progress_is_capped_at_one_hundred_percent(client, ana_headers):
         response = client.put(
             f"/api/attendance/{month}-{day}",
             headers=ana_headers,
-            json={"user_id": "ana", "status": "present", "notes": ""},
+            json={"user_id": "ana", "notes": ""},
         )
         assert response.status_code == 200
 
@@ -120,7 +120,6 @@ def test_manager_monthly_view_and_manager_without_team(client, ana_headers):
         "diego",
     ]
     assert [member["present_count"] for member in body["members"]] == [2, 4, 0]
-    assert [member["absent_count"] for member in body["members"]] == [1, 0, 1]
     assert all("days" in member for member in body["members"])
 
     empty = client.get(

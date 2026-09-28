@@ -144,7 +144,7 @@ Diretório: `polo-visits/`
 
 - **Stack:** React com Vite no frontend; Python 3.12, FastAPI e SQLite no backend.
 - **Domínio:** registro pessoal de dias trabalhados presencialmente, com meta de 8 dias por mês.
-- **Fluxos:** calendário mensal, marcação de presença ou ausência, correção de registros, progresso individual, troca de perfil e visão consolidada do time para gestores.
+- **Fluxos:** calendário mensal, confirmação de presença, remoção de confirmações feitas por engano, progresso individual, troca de perfil e visão consolidada do time para gestores.
 - **Persistência:** SQLite com pessoas, equipes e marcações demonstrativas.
 - **Pontos principais:** `backend/app`, `backend/tests`, `frontend/src` e os Dockerfiles de cada aplicação.
 

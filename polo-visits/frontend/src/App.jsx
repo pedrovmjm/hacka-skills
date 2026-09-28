@@ -62,34 +62,33 @@ function Calendar({ month, days, selected, onSelect, readOnly }) {
     <div className="weekdays" aria-hidden="true">{WEEKDAYS.map((day) => <span key={day}>{day}</span>)}</div>
     <div className="calendar-grid" role="grid" aria-label={`Calendário de ${monthLabel.format(month)}`}>{cells.map((cell) => {
       if (!cell.attendance_date) return <span className="blank" key={cell.key}/>;
-      const item = map.get(cell.attendance_date); const status = item?.status;
-      const state = status === "present" ? "fui ao polo" : status === "absent" ? "não fui" : "sem marcação";
-      return <button key={cell.key} role="gridcell" className={`day ${status || "unmarked"} ${selected === cell.attendance_date ? "selected" : ""} ${today === cell.attendance_date ? "today" : ""}`} onClick={() => onSelect?.(cell.attendance_date)} aria-label={`${cell.day} de ${monthLabel.format(month)}, ${state}`} aria-selected={selected === cell.attendance_date}>
-        <strong>{cell.day}</strong>{status && <small>{status === "present" ? "Presente" : "Ausente"}</small>}{item?.notes && <i title="Possui observação"/>}
+      const item = map.get(cell.attendance_date); const checkedIn = item?.status === "present";
+      const state = checkedIn ? "presença confirmada" : "sem confirmação";
+      return <button key={cell.key} role="gridcell" className={`day ${checkedIn ? "present" : "unmarked"} ${selected === cell.attendance_date ? "selected" : ""} ${today === cell.attendance_date ? "today" : ""}`} onClick={() => onSelect?.(cell.attendance_date)} aria-label={`${cell.day} de ${monthLabel.format(month)}, ${state}`} aria-selected={selected === cell.attendance_date}>
+        <strong>{cell.day}</strong>{checkedIn && <small>Confirmado</small>}{item?.notes && <i title="Possui observação"/>}
       </button>;
     })}</div>
   </div>;
 }
 
 function Editor({ date, item, saving, onSave, onDelete, onClose }) {
-  const [status, setStatus] = useState(item?.status || "present");
   const [notes, setNotes] = useState(item?.notes || "");
-  useEffect(() => { setStatus(item?.status || "present"); setNotes(item?.notes || ""); }, [date, item]);
+  useEffect(() => { setNotes(item?.notes || ""); }, [date, item]);
   return <aside className="editor" aria-labelledby="editor-title">
-    <div className="editor-head"><div><p className="eyebrow">Editar dia</p><h3 id="editor-title">{dateLabel.format(parseDate(date))}</h3></div><button className="close" onClick={onClose} aria-label="Fechar editor">×</button></div>
-    <fieldset><legend>Como foi seu dia?</legend>{[["present", "Fui ao polo", "Conta para sua meta mensal"], ["absent", "Não fui", "Registra ausência neste dia"]].map(([value, title, subtitle]) => <label className={`status ${status === value ? "active" : ""}`} key={value}><input type="radio" name="status" value={value} checked={status === value} onChange={(e) => setStatus(e.target.value)}/><b className={value}>{value === "present" ? <Icon name="check"/> : "—"}</b><span><strong>{title}</strong><small>{subtitle}</small></span></label>)}</fieldset>
+    <div className="editor-head"><div><p className="eyebrow">Confirmar presença</p><h3 id="editor-title">{dateLabel.format(parseDate(date))}</h3></div><button className="close" onClick={onClose} aria-label="Fechar editor">×</button></div>
+    <div className="status active"><b className="present"><Icon name="check"/></b><span><strong>{item ? "Presença confirmada" : "Confirmar ida ao polo"}</strong><small>Este dia conta para sua meta mensal</small></span></div>
     <label className="notes">Observação <small>opcional</small><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows="3" placeholder="Ex.: reunião com o time"/>{item?.notes && <span className="notes-preview"><small>Observação salva</small><span dangerouslySetInnerHTML={{ __html: item.notes }}/></span>}</label>
-    <div className="editor-actions"><button className="primary" disabled={saving} onClick={() => onSave(status, notes)}>{saving ? "Salvando..." : "Salvar marcação"}</button>{item && <button className="delete" disabled={saving} onClick={onDelete}>Limpar marcação</button>}</div>
+    <div className="editor-actions"><button className="primary" disabled={saving} onClick={() => onSave(notes)}>{saving ? "Salvando..." : item ? "Salvar observação" : "Confirmar presença"}</button>{item && <button className="delete" disabled={saving} onClick={onDelete}>Remover confirmação</button>}</div>
   </aside>;
 }
 
 function Personal({ data, month, selected, setSelected, loading, saving, onSave, onDelete }) {
   const days = normalizeDays(data?.days); const item = days.find((day) => day.attendance_date === selected);
-  const goal = Number(data?.goal ?? GOAL); const present = Number(data?.present_count ?? 0); const absent = Number(data?.absent_count ?? 0);
+  const goal = Number(data?.goal ?? GOAL); const present = Number(data?.present_count ?? 0);
   const remaining = Number(data?.remaining_count ?? Math.max(goal - present, 0)); const percent = Number(data?.progress_percent ?? Math.round(present / goal * 100));
   return <div className="personal-layout">
-    <section className="card calendar-card"><div className="card-head"><div><p className="eyebrow">Seu mês</p><h2>Calendário de presença</h2></div><div className="legend"><span><i className="present"/> Presente</span><span><i className="absent"/> Não fui</span></div></div>{loading ? <div className="skeleton" aria-label="Carregando calendário"/> : <Calendar month={month} days={days} selected={selected} onSelect={setSelected}/>}</section>
-    <aside className="side"><section className="goal"><p className="eyebrow">Meta mensal</p><div><strong>{present}</strong><span>de {goal} dias</span></div><Progress value={percent} label={`${percent}% da meta mensal`}/><p>{remaining ? <><b>Faltam {remaining} dias</b> para alcançar sua meta.</> : <><b>Meta alcançada!</b> Continue assim.</>}</p><small>{absent} {absent === 1 ? "ausência marcada" : "ausências marcadas"}</small></section><section className="tip"><span>💡</span><div><b>Organize sua rotina</b><p>Clique em um dia para registrar ou corrigir sua presença.</p></div></section></aside>
+    <section className="card calendar-card"><div className="card-head"><div><p className="eyebrow">Seu mês</p><h2>Calendário de presença</h2></div><div className="legend"><span><i className="present"/> Presença confirmada</span></div></div>{loading ? <div className="skeleton" aria-label="Carregando calendário"/> : <Calendar month={month} days={days} selected={selected} onSelect={setSelected}/>}</section>
+    <aside className="side"><section className="goal"><p className="eyebrow">Meta mensal</p><div><strong>{present}</strong><span>de {goal} dias</span></div><Progress value={percent} label={`${percent}% da meta mensal`}/><p>{remaining ? <><b>Faltam {remaining} dias</b> para alcançar sua meta.</> : <><b>Meta alcançada!</b> Continue assim.</>}</p><small>{present} {present === 1 ? "presença confirmada" : "presenças confirmadas"}</small></section><section className="tip"><span>💡</span><div><b>Confirme suas idas</b><p>Clique em um dia para confirmar sua presença ou corrigir um engano.</p></div></section></aside>
     {selected && <Editor key={selected} date={selected} item={item} saving={saving} onSave={onSave} onDelete={onDelete} onClose={() => setSelected("")}/>}
   </div>;
 }
@@ -107,8 +106,8 @@ function Team({ data, month, loading, selected, setSelected }) {
   const average = Number(data?.team_average ?? data?.average_present ?? data?.average ?? (members.length ? total / members.length : 0));
   return <div className="team-view">
     <section className="team-summary">{[["users", "Tamanho do time", data?.team_size ?? members.length, "pessoas"], ["calendar", "Total de presenças", total, "dias no mês"], ["check", "Média por pessoa", average.toFixed(1).replace(".", ","), `de ${data?.goal ?? GOAL} dias`]].map(([icon, label, value, suffix]) => <article key={label}><b><Icon name={icon}/></b><div><small>{label}</small><strong>{value}</strong><span>{suffix}</span></div></article>)}</section>
-    <section className="card team-card"><div className="card-head"><div><p className="eyebrow">Acompanhamento</p><h2>Presença do time</h2><p>Selecione uma pessoa para consultar os dias marcados.</p></div><span className="chip">Meta: {data?.goal ?? GOAL} dias</span></div>{members.length === 0 ? <p className="empty">Nenhum integrante encontrado para este mês.</p> : <div className="members">{members.map((person) => <button className={`member ${selected === person.id ? "active" : ""}`} key={person.id} onClick={() => setSelected(selected === person.id ? "" : person.id)} aria-expanded={selected === person.id}><span className="avatar">{person.name.slice(0, 2).toUpperCase()}</span><span className="member-name"><b>{person.name}</b><small>{person.present >= person.goal ? "Meta alcançada" : `${person.remaining} dias restantes`}</small></span><span className="member-progress"><Progress value={person.percent} label={`${person.name}: ${person.percent}% da meta`}/></span><span className="member-count"><b>{person.present}</b><small>de {person.goal} dias</small></span><Icon name="right"/></button>)}</div>}</section>
-    {active && <section className="card detail"><div className="card-head"><div><p className="eyebrow">Detalhe mensal</p><h2>Calendário de {active.name}</h2></div><button className="close" onClick={() => setSelected("")} aria-label="Fechar detalhe">×</button></div><div className="legend"><span><i className="present"/> Presente</span><span><i className="absent"/> Não foi</span></div><Calendar month={month} days={active.days} readOnly/>{active.days.some((day) => day.notes) && <div className="team-notes"><h3>Observações do mês</h3>{active.days.filter((day) => day.notes).map((day) => <article key={day.attendance_date}><time>{dateLabel.format(parseDate(day.attendance_date))}</time><div dangerouslySetInnerHTML={{ __html: day.notes }}/></article>)}</div>}</section>}
+    <section className="card team-card"><div className="card-head"><div><p className="eyebrow">Acompanhamento</p><h2>Presença do time</h2><p>Selecione uma pessoa para consultar as presenças confirmadas.</p></div><span className="chip">Meta: {data?.goal ?? GOAL} dias</span></div>{members.length === 0 ? <p className="empty">Nenhum integrante encontrado para este mês.</p> : <div className="members">{members.map((person) => <button className={`member ${selected === person.id ? "active" : ""}`} key={person.id} onClick={() => setSelected(selected === person.id ? "" : person.id)} aria-expanded={selected === person.id}><span className="avatar">{person.name.slice(0, 2).toUpperCase()}</span><span className="member-name"><b>{person.name}</b><small>{person.present >= person.goal ? "Meta alcançada" : `${person.remaining} dias restantes`}</small></span><span className="member-progress"><Progress value={person.percent} label={`${person.name}: ${person.percent}% da meta`}/></span><span className="member-count"><b>{person.present}</b><small>de {person.goal} dias</small></span><Icon name="right"/></button>)}</div>}</section>
+    {active && <section className="card detail"><div className="card-head"><div><p className="eyebrow">Detalhe mensal</p><h2>Calendário de {active.name}</h2></div><button className="close" onClick={() => setSelected("")} aria-label="Fechar detalhe">×</button></div><div className="legend"><span><i className="present"/> Presença confirmada</span></div><Calendar month={month} days={active.days} readOnly/>{active.days.some((day) => day.notes) && <div className="team-notes"><h3>Observações do mês</h3>{active.days.filter((day) => day.notes).map((day) => <article key={day.attendance_date}><time>{dateLabel.format(parseDate(day.attendance_date))}</time><div dangerouslySetInnerHTML={{ __html: day.notes }}/></article>)}</div>}</section>}
   </div>;
 }
 
@@ -127,14 +126,14 @@ export default function App() {
   }
   useEffect(() => { setSelectedDate(""); setSelectedMember(""); load(); }, [user, tab, currentMonth]);
 
-  async function save(status, notes) {
+  async function save(notes) {
     setSaving(true); setNotice(null);
-    try { await request(`/api/attendance/${selectedDate}`, { method: "PUT", headers: { "Content-Type": "application/json", "X-User": user }, body: JSON.stringify({ user_id: user, status, notes }) }); setSelectedDate(""); await load(); setNotice({ type: "success", text: "Marcação salva com sucesso." }); }
+    try { await request(`/api/attendance/${selectedDate}`, { method: "PUT", headers: { "Content-Type": "application/json", "X-User": user }, body: JSON.stringify({ user_id: user, notes }) }); setSelectedDate(""); await load(); setNotice({ type: "success", text: "Presença confirmada com sucesso." }); }
     catch (error) { setNotice({ type: "error", text: error.message }); } finally { setSaving(false); }
   }
   async function remove() {
     setSaving(true); setNotice(null);
-    try { await request(`/api/attendance/${selectedDate}?user_id=${encodeURIComponent(user)}`, { method: "DELETE", headers: { "X-User": user } }); setSelectedDate(""); await load(); setNotice({ type: "success", text: "Marcação removida." }); }
+    try { await request(`/api/attendance/${selectedDate}?user_id=${encodeURIComponent(user)}`, { method: "DELETE", headers: { "X-User": user } }); setSelectedDate(""); await load(); setNotice({ type: "success", text: "Confirmação removida." }); }
     catch (error) { setNotice({ type: "error", text: error.message }); } finally { setSaving(false); }
   }
 

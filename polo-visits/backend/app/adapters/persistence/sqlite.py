@@ -53,7 +53,7 @@ class SQLiteAttendanceRepository:
             (
                 command.user_id,
                 command.attendance_date,
-                command.status,
+                "present",
                 command.notes,
                 now,
                 now,
@@ -96,15 +96,12 @@ def seed() -> None:
     attendance = [
         ("ana", f"{month}-02", "present", "Trabalho presencial"),
         ("ana", f"{month}-05", "present", "Reunião no polo"),
-        ("ana", f"{month}-09", "absent", "Marcação corrigível"),
         ("bruno", f"{month}-01", "present", ""),
         ("bruno", f"{month}-03", "present", ""),
-        ("bruno", f"{month}-08", "absent", ""),
         ("carla", f"{month}-02", "present", ""),
         ("carla", f"{month}-04", "present", ""),
         ("carla", f"{month}-06", "present", ""),
         ("carla", f"{month}-10", "present", ""),
-        ("diego", f"{month}-07", "absent", ""),
     ]
     connection.executemany(
         """
@@ -139,6 +136,8 @@ def initialize_database() -> None:
         );
         """
     )
+    connection.execute("DELETE FROM attendance WHERE status != 'present'")
+    connection.commit()
     count = connection.execute(
         "SELECT COUNT(*) AS total FROM attendance"
     ).fetchone()["total"]

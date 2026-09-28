@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 
-test("registra, altera e limpa uma marcação usando a API real", async ({
+test("confirma, edita e remove uma presença usando a API real", async ({
   page,
   request,
 }) => {
@@ -29,25 +29,24 @@ test("registra, altera e limpa uma marcação usando a API real", async ({
   ).toBeVisible();
 
   const targetDay = page.getByRole("gridcell", {
-    name: /20 de .*sem marcação/i,
+    name: /20 de .*sem confirmação/i,
   });
   await targetDay.click();
-  await page.locator('input[name="status"][value="present"]').check();
   await page
     .getByPlaceholder("Ex.: reunião com o time")
     .fill("Dia de integração E2E");
-  await page.getByRole("button", { name: "Salvar marcação" }).click();
-  await expect(page.getByRole("status")).toContainText("Marcação salva");
+  await page.getByRole("button", { name: "Confirmar presença" }).click();
+  await expect(page.getByRole("status")).toContainText("Presença confirmada");
 
-  await page.getByRole("gridcell", { name: /20 de .*fui ao polo/i }).click();
-  await page.locator('input[name="status"][value="absent"]').check();
-  await page.getByRole("button", { name: "Salvar marcação" }).click();
-  await expect(page.getByRole("status")).toContainText("Marcação salva");
+  await page.getByRole("gridcell", { name: /20 de .*presença confirmada/i }).click();
+  await page.getByPlaceholder("Ex.: reunião com o time").fill("Observação corrigida E2E");
+  await page.getByRole("button", { name: "Salvar observação" }).click();
+  await expect(page.getByRole("status")).toContainText("Presença confirmada");
 
-  await page.getByRole("gridcell", { name: /20 de .*não fui/i }).click();
-  await page.getByRole("button", { name: "Limpar marcação" }).click();
+  await page.getByRole("gridcell", { name: /20 de .*presença confirmada/i }).click();
+  await page.getByRole("button", { name: "Remover confirmação" }).click();
   await expect(
-    page.getByRole("gridcell", { name: /20 de .*sem marcação/i }),
+    page.getByRole("gridcell", { name: /20 de .*sem confirmação/i }),
   ).toBeVisible();
 });
 

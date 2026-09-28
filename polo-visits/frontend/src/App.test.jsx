@@ -8,7 +8,7 @@ const response = (body, status = 200) => ({ ok: status >= 200 && status < 300, s
 
 describe("App de presença", () => {
   beforeEach(() => {
-    const attendance = { user_id: "ana", month, goal: 8, present_count: 3, absent_count: 1, remaining_count: 5, progress_percent: 37.5, days: [{ attendance_date: markedDate, status: "present", notes: "Planejamento" }] };
+    const attendance = { user_id: "ana", month, goal: 8, present_count: 3, remaining_count: 5, progress_percent: 37.5, days: [{ attendance_date: markedDate, status: "present", notes: "Planejamento" }] };
     vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
       const target = String(url);
       if (target.includes("team-attendance")) return response({ manager_id: "ana", month, goal: 8, team_size: 2, total_present: 9, average_present: 4.5, members: [{ user_id: "ana", name: "Ana Souza", present_count: 6, remaining_count: 2, progress_percent: 75, days: [{ attendance_date: markedDate, status: "present" }] }, { user_id: "bruno", name: "Bruno Lima", present_count: 3, remaining_count: 5, progress_percent: 37.5, days: [] }] });
@@ -31,19 +31,19 @@ describe("App de presença", () => {
   it("abre o editor e salva uma presença pelo contrato da API", async () => {
     render(<App />);
     const calendar = await screen.findByRole("grid");
-    fireEvent.click(within(calendar).getByRole("gridcell", { name: new RegExp("5 de .*fui ao polo", "i") }));
+    fireEvent.click(within(calendar).getByRole("gridcell", { name: new RegExp("5 de .*presença confirmada", "i") }));
     fireEvent.change(screen.getByPlaceholderText(/reunião com o time/i), { target: { value: "Encontro presencial" } });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar marcação" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar observação" }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining(`/api/attendance/${markedDate}`), expect.objectContaining({ method: "PUT", headers: expect.objectContaining({ "X-User": "ana" }) })));
-    expect(await screen.findByRole("status")).toHaveTextContent("Marcação salva com sucesso");
+    expect(await screen.findByRole("status")).toHaveTextContent("Presença confirmada com sucesso");
   });
 
   it("caracteriza a injeção deliberada de HTML em observações persistidas", async () => {
     const payload = '<img src="x" data-testid="stored-xss" onerror="alert(1)">';
-    fetch.mockResolvedValueOnce(response({ user_id: "ana", month, goal: 8, present_count: 1, absent_count: 0, remaining_count: 7, progress_percent: 12.5, days: [{ attendance_date: markedDate, status: "present", notes: payload }] }));
+    fetch.mockResolvedValueOnce(response({ user_id: "ana", month, goal: 8, present_count: 1, remaining_count: 7, progress_percent: 12.5, days: [{ attendance_date: markedDate, status: "present", notes: payload }] }));
     const { container } = render(<App />);
     const calendar = await screen.findByRole("grid");
-    fireEvent.click(within(calendar).getByRole("gridcell", { name: new RegExp("5 de .*fui ao polo", "i") }));
+    fireEvent.click(within(calendar).getByRole("gridcell", { name: new RegExp("5 de .*presença confirmada", "i") }));
     const injectedImage = container.querySelector('.notes-preview img[data-testid="stored-xss"]');
     expect(injectedImage).not.toBeNull();
     expect(injectedImage.getAttribute("onerror")).toBe("alert(1)");

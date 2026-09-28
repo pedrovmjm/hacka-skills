@@ -7,7 +7,6 @@ from app.domain.models import AttendanceUpsertCommand
 
 class AttendanceUpsert(BaseModel):
     user_id: str
-    status: str
     notes: str = ""
 
 
@@ -36,7 +35,6 @@ def create_router(service: AttendanceService) -> APIRouter:
             AttendanceUpsertCommand(
                 user_id=body.user_id,
                 attendance_date=attendance_date,
-                status=body.status,
                 notes=body.notes,
             )
         )

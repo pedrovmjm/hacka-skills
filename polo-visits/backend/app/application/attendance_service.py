@@ -8,13 +8,11 @@ def monthly_summary(
     user_id: str, month: str, days: list[AttendanceRecord]
 ) -> dict[str, Any]:
     present_count = sum(day["status"] == "present" for day in days)
-    absent_count = sum(day["status"] == "absent" for day in days)
     return {
         "user_id": user_id,
         "month": month,
         "goal": MONTHLY_GOAL,
         "present_count": present_count,
-        "absent_count": absent_count,
         "remaining_count": max(0, MONTHLY_GOAL - present_count),
         "progress_percent": min(100, round(present_count / MONTHLY_GOAL * 100)),
         "days": days,
@@ -64,4 +62,3 @@ class AttendanceService:
             ),
             "members": members,
         }
-

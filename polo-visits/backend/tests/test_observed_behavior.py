@@ -11,7 +11,7 @@ def test_header_identity_does_not_control_requested_user(client, ana_headers):
     changed = client.put(
         f"/api/attendance/{month}-20",
         headers=ana_headers,
-        json={"user_id": "bruno", "status": "present", "notes": "Por Ana"},
+        json={"user_id": "bruno", "notes": "Por Ana"},
     )
     removed = client.delete(
         f"/api/attendance/{month}-01",
@@ -44,20 +44,19 @@ def test_manager_view_is_exposed_to_a_different_x_user(client):
     }
 
 
-def test_payload_keeps_unvalidated_status_date_and_notes(client, ana_headers):
+def test_payload_keeps_unvalidated_date_user_and_notes(client, ana_headers):
     response = client.put(
         "/api/attendance/amanha-talvez",
         headers=ana_headers,
         json={
             "user_id": "bruno",
-            "status": "talvez-presente",
             "notes": "<img src=x onerror=alert(1)>",
         },
     )
 
     assert response.status_code == 200
     assert response.json()["attendance_date"] == "amanha-talvez"
-    assert response.json()["status"] == "talvez-presente"
+    assert response.json()["status"] == "present"
     assert "onerror" in response.json()["notes"]
 
 
