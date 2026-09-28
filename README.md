@@ -1,88 +1,104 @@
-# Desafio de auditoria e refatoracao de projetos legados
+# Desafio de auditoria e refatoração de projetos legados
 
-Este repositorio e um conjunto de avaliacao para uma futura skill capaz de reconhecer uma codebase, auditar arquitetura, seguranca e qualidade, produzir um relatorio revisavel, refatorar com criterio e provar que os fluxos continuam funcionando. Os alvos sao dois sistemas ficticios, executaveis localmente, com stacks e dominios diferentes.
+Este repositório é um ambiente de avaliação para uma **skill de auditoria e refatoração de software**. Ele contém dois projetos legados fictícios, executáveis localmente, com problemas deliberados de arquitetura, segurança e qualidade.
 
-> Os projetos contem comportamentos deliberadamente inadequados. Eles existem para avaliacao em ambiente local e nao devem ser publicados como sistemas de producao. Nenhuma credencial ou dado pessoal real e usado.
+O objetivo é avaliar se uma skill consegue:
 
-## Origem e adaptacao
+1. reconhecer uma base de código desconhecida;
+2. produzir uma auditoria técnica verificável;
+3. aguardar revisão humana antes de alterar o código;
+4. corrigir as causas-raiz aprovadas;
+5. comprovar que os fluxos legítimos continuam funcionando.
 
-O metodo foi inspirado no desafio [Criação de Skills — Refatoração Arquitetural Automatizada](https://github.com/devfullcycle/mba-ia-refactor-projects-skill): reconhecer o projeto, registrar achados com severidade e localizacao, submeter o relatorio a revisao humana, refatorar e validar a aplicacao.
+> Os projetos deste repositório são intencionalmente vulneráveis ou inadequados. Use-os somente em ambiente local. Não há credenciais nem dados pessoais reais.
 
-Esta versao muda o objeto da avaliacao. Em vez dos tres projetos Flask/Express originais e de uma migracao obrigatoria para MVC, ha dois projetos novos: uma plataforma de agentes com LangGraph e uma aplicacao React + FastAPI. A skill futura devera recomendar uma arquitetura coerente com cada contexto; MVC nao e uma resposta predefinida. Tambem se exige que ela trate seguranca, isolamento de estado, fluxos HITL, frontend e preservacao observavel de comportamento.
+## Comece aqui: o que deve ser feito
 
-Este repositorio entrega os alvos legados e o gabarito de avaliacao. Ele nao contem nem executa a skill que sera avaliada.
+Quem resolver o desafio deve seguir esta ordem:
 
-## Projetos-alvo
+1. **Criar ou configurar a skill que será avaliada.** A skill não está incluída neste repositório.
+2. **Executar os testes atuais e guardar os resultados.** Esses resultados formam o baseline anterior à refatoração.
+3. **Apontar a skill apenas para os dois projetos-alvo:**
+   - `langgraph-agent-platform/`
+   - `polo-visits/`
+4. **Solicitar reconhecimento e auditoria.** A skill deve analisar os projetos e salvar um relatório com evidências, severidade e localização dos problemas.
+5. **Interromper o processo para revisão humana.** Nenhum arquivo de implementação pode ser alterado antes da aprovação explícita do relatório.
+6. **Após a aprovação, executar a refatoração.** Somente os achados aceitos devem orientar as mudanças.
+7. **Validar a solução.** Repetir os testes, iniciar as aplicações, verificar os fluxos ponta a ponta e registrar os resultados.
+8. **Entregar a rastreabilidade.** Relacionar cada achado à correção aplicada e ao teste que comprova o resultado.
 
-### 1. Plataforma de agentes
+### Regra mais importante
 
-Diretorio: `langgraph-agent-platform/`
+O arquivo `evaluation/answer-key.md` é um gabarito privado. Ele **não pode entrar no contexto da skill durante a auditoria**. O gabarito só deve ser consultado depois que o relatório da skill estiver concluído.
 
-- Stack: Python 3.12, FastAPI, LangGraph e SQLite.
-- Modelo: simulador deterministico, sem chave de API e sem servico externo.
-- Fluxos: consultar/configurar agentes; conversar; consultar politicas; executar ferramenta local; solicitar envio de notificacao; interromper o grafo; aprovar ou recusar; retomar a execucao; recuperar historico persistido.
-- Persistencia: agentes e conversas em SQLite, com checkpoints do LangGraph tambem em SQLite.
-- Estrutura principal: `app/main.py`, `app/database.py`, `tests/` e `Dockerfile`.
+Também é obrigatório preservar a etapa de revisão humana: primeiro auditar e salvar o relatório; somente depois de uma aprovação explícita, alterar o código.
 
-Instrucoes e exemplos: [`langgraph-agent-platform/README.md`](langgraph-agent-platform/README.md).
+## Roteiro rápido
 
-### 2. Gestao de idas ao polo
+### 1. Verifique o baseline
 
-Diretorio: `polo-visits/`
+Na raiz do repositório, execute as três suítes antes de usar a skill:
 
-- Dominio: agendamento e registro de visitas presenciais a um polo ficticio. Uma "ida ao polo" e uma visita com data, horario, finalidade, observacoes, quantidade de acompanhantes e status.
-- Stack: React + Vite no frontend; Python 3.12, FastAPI e SQLite no backend.
-- Fluxos: consultar visitas; pesquisar; agendar; alterar; cancelar; trocar o perfil ficticio; visualizar resumo por status.
-- Persistencia: SQLite com dados de demonstracao de Ana e Bruno.
-- Estrutura principal: `backend/app`, `backend/tests`, `frontend/src` e Dockerfiles por aplicacao.
+```bash
+cd langgraph-agent-platform
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
 
-Instrucoes e exemplos: [`polo-visits/README.md`](polo-visits/README.md).
+cd ../polo-visits/backend
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
 
-## Processo esperado da futura skill
+cd ../frontend
+npm install
+npm test
+npm run build
+```
 
-1. **Reconhecimento do projeto:** identificar linguagem, frameworks, dependencias, entradas, persistencia, testes, fronteiras de confianca, fluxos importantes e arquitetura atual.
-2. **Auditoria:** analisar codigo e configuracao; produzir achados classificados como CRITICAL, HIGH, MEDIUM ou LOW; apontar arquivo e linha; incluir evidencia, impacto, recomendacao e forma de validacao. Achados sobre o mesmo defeito-raiz nao devem ser inflados artificialmente.
-3. **Revisao humana:** salvar o relatorio e interromper o trabalho antes de qualquer edicao. A pessoa avaliadora decide se o escopo e as correcoes propostas estao adequados.
-4. **Refatoracao:** apos aprovacao explicita, corrigir os problemas confirmados e melhorar limites arquiteturais sem impor um padrao unico. Contratos publicos e fluxos legitimos devem ser preservados ou ter qualquer mudanca justificada e migrada.
-5. **Validacao:** instalar dependencias, executar testes, iniciar as aplicacoes, repetir os fluxos ponta a ponta e acrescentar testes que falhem no legado e passem na versao corrigida. O relatorio final deve registrar comandos e resultados.
+Guarde os comandos, resultados e eventuais falhas. Eles serão comparados com a execução posterior à refatoração.
 
-## Criterios de aceite
+### 2. Execute a auditoria
 
-| Area | Criterio |
-| --- | --- |
-| Reconhecimento | Stack, dominio, estrutura, persistencia e fluxos sao descritos corretamente nos dois projetos. |
-| Qualidade da auditoria | Achados tem causa concreta, severidade defensavel, evidencia e referencia precisa a arquivo/linha. Duplicatas e suposicoes sem prova contam negativamente. |
-| Cobertura | A auditoria encontra problemas relevantes de arquitetura, seguranca e qualidade em ambos os projetos e cobre severidades variadas. |
-| Revisao humana | Nenhum arquivo de implementacao e alterado antes da aprovacao do relatorio. |
-| Refatoracao | As causas-raiz aceitas sao corrigidas; apenas reorganizar arquivos ou renomear simbolos nao basta. |
-| Preservacao | Conversacao, HITL, persistencia, CRUD de visitas, resumo e interface continuam funcionais. |
-| Seguranca | As verificacoes que reproduzem comportamentos indevidos deixam de reproduzi-los e sao substituidas ou complementadas por expectativas seguras. |
-| Testes | Suites Python e frontend passam; aplicacoes iniciam; ao menos um fluxo completo de cada projeto e verificado. |
-| Rastreabilidade | Entrega final relaciona achado, mudanca, teste e resultado. |
+Forneça à skill somente os diretórios `langgraph-agent-platform/` e `polo-visits/`. Solicite que ela:
 
-## Entregas esperadas de quem resolver
+- reconheça stack, domínio, entradas, persistência, testes e arquitetura atual;
+- identifique fronteiras de confiança e fluxos importantes;
+- registre achados com severidade `CRITICAL`, `HIGH`, `MEDIUM` ou `LOW`;
+- informe arquivo, linha, evidência, impacto, recomendação e forma de validação;
+- consolide ocorrências que tenham a mesma causa-raiz;
+- salve o relatório e pare antes de editar qualquer implementação.
 
-- A skill reutilizavel e suas referencias, fora dos projetos-alvo ou no local exigido pela ferramenta escolhida.
-- Um relatorio de reconhecimento e auditoria para cada projeto, preservado antes da refatoracao.
-- Registro da aprovacao humana do escopo.
-- Codigo refatorado dos dois projetos, com commits ou diff facilmente revisavel.
-- Testes novos ou ajustados que comprovem as correcoes e evitem regressoes.
-- Relatorio final com matriz `achado -> correcao -> teste`, comandos executados, resultados e decisoes que alteraram contratos.
+### 3. Revise e aprove o escopo
 
-## Execucao rapida com Docker
+Leia o relatório, confira as evidências no código e registre quais achados foram aceitos, rejeitados ou ajustados. A autorização para refatorar deve ser explícita.
 
-Pre-requisito: Docker Engine com Compose.
+### 4. Refatore e valide
+
+Depois da aprovação, peça à skill para corrigir as causas-raiz aceitas. Ela deve preservar os contratos públicos e os fluxos legítimos ou documentar e migrar qualquer mudança necessária.
+
+Ao final:
+
+- repita os testes do baseline;
+- inicie os três serviços;
+- execute pelo menos um fluxo completo de cada projeto;
+- adicione testes que reproduzam os problemas corrigidos;
+- produza uma matriz `achado → correção → teste → resultado`.
+
+## Execução das aplicações com Docker
+
+Pré-requisito: Docker Engine com Docker Compose.
 
 ```bash
 docker compose up --build -d
 docker compose ps
 ```
 
-Servicos:
+Serviços disponíveis:
 
-- plataforma de agentes: `http://localhost:8000/docs`
-- API de idas ao polo: `http://localhost:8001/docs`
-- interface de idas ao polo: `http://localhost:5173`
+| Serviço | Endereço |
+| --- | --- |
+| Plataforma de agentes | `http://localhost:8000/docs` |
+| API de idas ao polo | `http://localhost:8001/docs` |
+| Interface de idas ao polo | `http://localhost:5173` |
 
 Para encerrar:
 
@@ -90,7 +106,7 @@ Para encerrar:
 docker compose down
 ```
 
-Os READMEs dos projetos mostram instalacao nativa, chamadas HTTP e suites de teste. Para testar em containers sem depender dos runtimes da maquina:
+### Testes isolados em containers
 
 ```bash
 docker build --target test -t agent-platform-test -f langgraph-agent-platform/Dockerfile langgraph-agent-platform
@@ -106,44 +122,112 @@ docker build --target e2e -t polo-web-e2e -f polo-visits/frontend/Dockerfile pol
 docker run --rm --add-host=host.docker.internal:host-gateway polo-web-e2e
 ```
 
-As suites completas usam as dependencias de desenvolvimento descritas em cada projeto.
+Os READMEs de cada projeto também apresentam instalação nativa, endpoints, chamadas HTTP e fluxos manuais.
 
-## Validacao antes e depois da refatoracao
+## Projetos-alvo
 
-Antes de executar a skill, rode todas as suites e guarde os resultados como baseline:
+### Plataforma de agentes
 
-```bash
-cd langgraph-agent-platform
-python -m pytest -q
+Diretório: `langgraph-agent-platform/`
 
-cd ../polo-visits/backend
-python -m pytest -q
+- **Stack:** Python 3.12, FastAPI, LangGraph e SQLite.
+- **Modelo:** simulador determinístico local, sem chave de API ou serviço externo.
+- **Fluxos:** configuração de agentes, conversa, consulta de políticas, ferramenta de leitura, solicitação de notificação, interrupção HITL, aprovação ou recusa, retomada e histórico persistido.
+- **Persistência:** agentes, conversas e checkpoints em SQLite.
+- **Pontos principais:** `app/main.py`, `app/database.py`, `tests/` e `Dockerfile`.
 
-cd ../frontend
-npm install
-npm test
-npm run build
-```
+Consulte [as instruções da plataforma de agentes](langgraph-agent-platform/README.md).
 
-Depois da refatoracao, repita exatamente esses comandos, suba os tres servicos e execute os fluxos manuais documentados nos READMEs. Testes de caracterizacao podem precisar ter suas expectativas atualizadas quando documentam um comportamento que foi deliberadamente corrigido; nesse caso, o diff deve mostrar a nova expectativa segura.
+### Gestão de idas ao polo
 
-## Avaliacao cega e gabarito
+Diretório: `polo-visits/`
 
-O gabarito privado da primeira validacao fica em `evaluation/answer-key.md`. Ele nao deve entrar no contexto da skill: apontar a ferramenta somente para `langgraph-agent-platform/` e `polo-visits/` e a opcao mais simples. Se for necessario fornecer uma copia da raiz, crie um pacote sem `evaluation/`:
+- **Stack:** React com Vite no frontend; Python 3.12, FastAPI e SQLite no backend.
+- **Domínio:** agendamento e registro de visitas presenciais a um polo fictício.
+- **Fluxos:** consulta, pesquisa, criação, alteração e cancelamento de visitas, troca de perfil e resumo por status.
+- **Persistência:** SQLite com dados demonstrativos de Ana e Bruno.
+- **Pontos principais:** `backend/app`, `backend/tests`, `frontend/src` e os Dockerfiles de cada aplicação.
+
+Consulte [as instruções da aplicação de visitas](polo-visits/README.md).
+
+## Processo esperado da skill
+
+### 1. Reconhecimento
+
+Identificar linguagem, frameworks, dependências, entradas, persistência, testes, fronteiras de confiança, fluxos importantes e arquitetura atual.
+
+### 2. Auditoria
+
+Analisar código e configuração. Cada achado deve apresentar:
+
+- causa concreta e severidade justificável;
+- arquivo e linha;
+- evidência reproduzível;
+- impacto;
+- recomendação;
+- estratégia de validação.
+
+Achados derivados do mesmo defeito-raiz não devem ser inflados artificialmente.
+
+### 3. Revisão humana
+
+Salvar o relatório e interromper o trabalho antes de qualquer alteração. A pessoa avaliadora decide se o escopo e as correções propostas estão adequados.
+
+### 4. Refatoração
+
+Após aprovação explícita, corrigir os problemas confirmados e melhorar os limites arquiteturais sem impor um padrão único. Apenas mover arquivos ou renomear símbolos não é suficiente.
+
+### 5. Validação
+
+Executar testes, iniciar as aplicações, repetir os fluxos ponta a ponta e acrescentar testes que falhem diante do comportamento vulnerável e passem com a correção. O relatório final deve registrar comandos e resultados.
+
+## Critérios de aceite
+
+| Área | Critério |
+| --- | --- |
+| Reconhecimento | Stack, domínio, estrutura, persistência e fluxos são descritos corretamente nos dois projetos. |
+| Auditoria | Os achados têm causa concreta, severidade defensável, evidência e referência precisa. Duplicatas e suposições sem prova contam negativamente. |
+| Cobertura | A análise encontra problemas relevantes de arquitetura, segurança e qualidade, com severidades variadas. |
+| Revisão humana | Nenhum arquivo de implementação é alterado antes da aprovação do relatório. |
+| Refatoração | As causas-raiz aceitas são corrigidas; mudanças apenas cosméticas não bastam. |
+| Preservação | Conversa, HITL, persistência, CRUD de visitas, resumo e interface continuam funcionais. |
+| Segurança | Os comportamentos indevidos deixam de ser reproduzíveis e passam a ter expectativas seguras. |
+| Testes | Suítes Python e frontend passam, as aplicações iniciam e pelo menos um fluxo completo de cada projeto é verificado. |
+| Rastreabilidade | A entrega final relaciona achado, mudança, teste e resultado. |
+
+## Entregas esperadas
+
+- Skill reutilizável e suas referências, no local exigido pela ferramenta escolhida e fora dos projetos-alvo.
+- Um relatório de reconhecimento e auditoria para cada projeto, preservado antes da refatoração.
+- Registro da revisão humana e da aprovação do escopo.
+- Código refatorado dos dois projetos, com commits ou diff facilmente revisável.
+- Testes novos ou ajustados que comprovem as correções e evitem regressões.
+- Relatório final com a matriz `achado → correção → teste`, comandos executados, resultados e decisões que alteraram contratos.
+
+## Avaliação cega e gabarito
+
+Para fornecer uma cópia da raiz à skill sem expor o gabarito, gere um pacote que exclua `evaluation/`:
 
 ```bash
 tar --exclude=evaluation --exclude=.git --exclude=node_modules -czf challenge-blind.tar.gz .
 ```
 
-Em um repositorio Git, outra alternativa e criar explicitamente um arquivo somente com os alvos:
+Em um repositório Git, também é possível gerar um ZIP somente com os arquivos públicos do desafio:
 
 ```bash
 git archive --format=zip --output=challenge-blind.zip HEAD README.md compose.yaml langgraph-agent-platform polo-visits
 ```
 
-Somente depois que a skill concluir o relatorio, compare-o com o gabarito. Avalie correspondencia por causa-raiz e evidencia, nao apenas por palavras iguais. Registre verdadeiros positivos, achados parciais, falsos positivos, achados nao encontrados, severidade divergente e se a correcao eliminou o comportamento demonstravel. O conteudo dos achados nao e repetido neste README para preservar a avaliacao cega.
+Somente depois que a skill concluir o relatório, compare os achados com `evaluation/answer-key.md`. Avalie a correspondência pela causa-raiz e pelas evidências, não apenas por palavras iguais. Registre:
 
-## Estrutura
+- verdadeiros positivos;
+- achados parciais;
+- falsos positivos;
+- achados não encontrados;
+- divergências de severidade;
+- confirmação de que a correção eliminou o comportamento demonstrável.
+
+## Estrutura do repositório
 
 ```text
 .
@@ -161,3 +245,11 @@ Somente depois que a skill concluir o relatorio, compare-o com o gabarito. Avali
 └── evaluation/
     └── answer-key.md
 ```
+
+## Origem e adaptação
+
+O método foi inspirado no desafio [Criação de Skills — Refatoração Arquitetural Automatizada](https://github.com/devfullcycle/mba-ia-refactor-projects-skill): reconhecer o projeto, registrar achados com severidade e localização, submeter o relatório à revisão humana, refatorar e validar a aplicação.
+
+Esta versão usa dois projetos novos: uma plataforma de agentes com LangGraph e uma aplicação React + FastAPI. A skill deve recomendar uma arquitetura coerente com cada contexto; MVC não é uma resposta predefinida. A avaliação também considera segurança, isolamento de estado, fluxos HITL, frontend e preservação observável de comportamento.
+
+Este repositório entrega apenas os alvos legados e o gabarito de avaliação. Ele não contém nem executa a skill que será avaliada.

@@ -12,6 +12,29 @@ Todos os nomes e registros sao demonstrativos.
 
 ## Backend
 
+O backend está organizado em arquitetura hexagonal. As dependências apontam para o
+núcleo da aplicação, enquanto FastAPI e SQLite ficam nas bordas:
+
+```text
+backend/app/
+├── domain/                    # Modelos, erros e porta de persistência
+├── application/               # Casos de uso de visitas
+├── adapters/
+│   ├── http/                  # Adaptador de entrada FastAPI
+│   └── persistence/           # Adaptador de saída SQLite
+├── main.py                    # Composição das dependências
+└── database.py                # Fachada de compatibilidade do legado
+```
+
+Fluxo de dependências:
+
+```text
+HTTP/FastAPI -> casos de uso -> porta do domínio <- SQLite
+```
+
+Essa organização é propositalmente apenas estrutural. Os comportamentos legados,
+inclusive os inadequados usados na avaliação da futura skill, continuam preservados.
+
 Instalacao no PowerShell:
 
 ```powershell
