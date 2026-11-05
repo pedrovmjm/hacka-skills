@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Guideline direto, em três slides, de como construir uma boa Agent Skill."
+    />
+    <title>Como construir uma boa skill</title>
+    <style>
+      :root {
+        --orange: #ec7000;
+        --orange-dark: #c95700;
+        --orange-light: #fff1e5;
+        --ink: #24201d;
+        --muted: #6b625c;
+        --line: #eadfd6;
+        --white: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        overflow: hidden;
+        background: #f7f4f1;
+        color: var(--ink);
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      code {
+        font-family: "Cascadia Code", Consolas, Menlo, monospace;
+        font-size: 0.92em;
+      }
+
+      .deck {
+        position: relative;
+        height: 100%;
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: clamp(1rem, 2vw, 1.75rem);
+        padding: clamp(1.5rem, 3vw, 3rem) clamp(1.5rem, 7vw, 7rem);
+        overflow: auto;
+        background:
+          radial-gradient(circle at 92% 8%, rgba(236, 112, 0, 0.12), transparent 26%),
+          var(--white);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(3rem);
+        transition: opacity 280ms ease, transform 280ms ease, visibility 280ms;
+      }
+
+      .slide[aria-hidden="false"] {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(0);
+      }
+
+      .slide::before {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 0.75rem;
+        height: 100%;
+        background: var(--orange);
+        content: "";
+      }
+
+      .topbar,
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: var(--orange-dark);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .counter {
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(18rem, 1fr);
+        gap: clamp(1.25rem, 4vw, 4rem);
+        align-items: center;
+        width: min(100%, 76rem);
+        margin: auto;
+      }
+
+      h1,
+      h2 {
+        max-width: 13ch;
+        margin: 0;
+        font-size: clamp(2.3rem, 4.2vw, 4.2rem);
+        line-height: 0.98;
+        letter-spacing: -0.055em;
+      }
+
+      .accent {
+        color: var(--orange);
+      }
+
+      .lead {
+        max-width: 43rem;
+        margin: 1.1rem 0 0;
+        color: var(--muted);
+        font-size: clamp(1rem, 1.35vw, 1.2rem);
+        line-height: 1.45;
+      }
+
+      .stack,
+      .path {
+        display: grid;
+        gap: 0.7rem;
+      }
+
+      .topic {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.8rem 1.1rem;
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 0.8rem 2rem rgba(68, 45, 26, 0.06);
+      }
+
+      .topic-index {
+        display: grid;
+        flex: 0 0 2.25rem;
+        width: 2.25rem;
+        height: 2.25rem;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--orange-light);
+        color: var(--orange-dark);
+        font-size: 0.82rem;
+        font-weight: 800;
+      }
+
+      .topic strong {
+        display: block;
+        margin-bottom: 0.2rem;
+      }
+
+      .topic div span {
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.35;
+      }
+
+      .gap-card {
+        margin-top: 0.9rem;
+        padding: 0.9rem 1.15rem;
+        border-left: 0.3rem solid var(--orange);
+        border-radius: 0 1rem 1rem 0;
+        background: var(--orange-light);
+        color: var(--ink);
+        font-size: clamp(0.95rem, 1.2vw, 1.08rem);
+        line-height: 1.45;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 5.5rem 1fr;
+        gap: 1rem;
+        align-items: center;
+        padding: 0.8rem 1.1rem;
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+        background: var(--white);
+      }
+
+      .step:first-child {
+        border-color: var(--orange);
+        background: var(--orange-light);
+      }
+
+      .step-label {
+        color: var(--orange-dark);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .step strong {
+        display: block;
+        margin-bottom: 0.2rem;
+        font-size: 1.02rem;
+      }
+
+      .step p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.35;
+      }
+
+      .focus {
+        grid-column: 1 / -1;
+        padding: 1rem 1.4rem;
+        border-radius: 1rem;
+        background: var(--ink);
+        color: var(--white);
+        font-size: clamp(0.95rem, 1.2vw, 1.08rem);
+        line-height: 1.45;
+      }
+
+      .focus strong {
+        color: #ff9d4d;
+      }
+
+      .focus a {
+        color: inherit;
+        font-weight: 700;
+      }
+
+      .footer {
+        min-height: 2.75rem;
+        border-top: 1px solid var(--line);
+        padding-top: 1rem;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .brand-mark {
+        flex: none;
+        width: 0.9rem;
+        height: 0.9rem;
+        border-radius: 0.2rem;
+        background: var(--orange);
+        transform: rotate(45deg);
+      }
+
+      .controls {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 0.55rem;
+      }
+
+      .dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: #d7cdc6;
+        cursor: pointer;
+      }
+
+      .dot[aria-current="true"] {
+        width: 1.6rem;
+        border-radius: 1rem;
+        background: var(--orange);
+      }
+
+      .nav-button {
+        display: grid;
+        width: 2.5rem;
+        height: 2.5rem;
+        margin-left: 0.25rem;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        background: var(--white);
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .nav-button:hover:not(:disabled) {
+        border-color: var(--orange);
+        color: var(--orange-dark);
+      }
+
+      .nav-button:disabled {
+        cursor: default;
+        opacity: 0.35;
+      }
+
+      button:focus-visible,
+      a:focus-visible {
+        outline: 3px solid rgba(236, 112, 0, 0.38);
+        outline-offset: 3px;
+      }
+
+      @media (max-width: 780px) {
+        .slide {
+          padding: 1.4rem 1.5rem 1.25rem 2rem;
+        }
+
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 1.25rem;
+          align-content: center;
+        }
+
+        h1,
+        h2 {
+          font-size: clamp(2.2rem, 10vw, 3.4rem);
+        }
+
+        .stack,
+        .path {
+          gap: 0.55rem;
+        }
+
+        .step {
+          grid-template-columns: 1fr;
+          gap: 0.3rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .slide {
+          transition: none;
+        }
+      }
+
+      @media print {
+        body {
+          overflow: visible;
+          background: white;
+        }
+
+        .deck {
+          height: auto;
+        }
+
+        .slide,
+        .slide[aria-hidden="true"] {
+          position: relative;
+          min-height: 100vh;
+          break-after: page;
+          opacity: 1;
+          visibility: visible;
+          transform: none;
+        }
+
+        .controls {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck" aria-label="Guideline: como construir uma boa skill">
+      <section class="slide" aria-hidden="false" aria-labelledby="slide-1-title">
+        <header class="topbar">
+          <p class="eyebrow">1. Pensar</p>
+          <span class="counter">01 / 03</span>
+        </header>
+
+        <div class="hero">
+          <div>
+            <h1 id="slide-1-title">Comece por um erro real, <span class="accent">não pela folha em branco.</span></h1>
+            <p class="lead">
+              Faça a tarefa com o agente, ainda sem skill. O que você precisou explicar ou corrigir é o conteúdo que a skill precisa ter.
+            </p>
+            <div class="gap-card">
+              <strong>Talvez não seja uma skill:</strong> regra que vale sempre vai nas instruções do projeto. Se o agente já resolve bem sozinho, não crie nada.
+            </div>
+          </div>
+
+          <div class="stack" aria-label="Perguntas antes de escrever">
+            <div class="topic">
+              <span class="topic-index">01</span>
+              <div><strong>Qual é a tarefa?</strong><span>Uma unidade coerente de trabalho, como uma boa função.</span></div>
+            </div>
+            <div class="topic">
+              <span class="topic-index">02</span>
+              <div><strong>O que o agente erra sem ela?</strong><span>Esse é o conteúdo que importa. O resto ele já sabe.</span></div>
+            </div>
+            <div class="topic">
+              <span class="topic-index">03</span>
+              <div><strong>Quando usar e quando não usar?</strong><span>O que as pessoas pedem e o que parece igual, mas é outra coisa.</span></div>
+            </div>
+            <div class="topic">
+              <span class="topic-index">04</span>
+              <div><strong>Como saber se deu certo?</strong><span>Defina 3 cenários de teste antes de escrever.</span></div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="footer">
+          <span class="brand"><span class="brand-mark" aria-hidden="true"></span> Como construir uma boa skill</span>
+          <nav class="controls" aria-label="Navegação dos slides">
+            <button class="dot" type="button" aria-label="Ir para o slide 1" aria-current="true" data-slide="0"></button>
+            <button class="dot" type="button" aria-label="Ir para o slide 2" aria-current="false" data-slide="1"></button>
+            <button class="dot" type="button" aria-label="Ir para o slide 3" aria-current="false" data-slide="2"></button>
+            <button class="nav-button previous" type="button" aria-label="Slide anterior" disabled>←</button>
+            <button class="nav-button next" type="button" aria-label="Próximo slide">→</button>
+          </nav>
+        </footer>
+      </section>
+
+      <section class="slide" aria-hidden="true" aria-labelledby="slide-2-title">
+        <header class="topbar">
+          <p class="eyebrow">2. Estruturar</p>
+          <span class="counter">02 / 03</span>
+        </header>
+
+        <div class="hero">
+          <div>
+            <h2 id="slide-2-title">Escreva só o que <span class="accent">o agente não sabe.</span></h2>
+            <p class="lead">
+              Cada nível é carregado só quando necessário. Dê um padrão em vez de um menu, explique o motivo das regras e liste as armadilhas.
+            </p>
+          </div>
+
+          <div class="path" aria-label="Níveis de carregamento de uma skill">
+            <div class="step">
+              <span class="step-label">Sempre</span>
+              <div><strong><code>description</code></strong><p>O que faz e quando usar. Até 1.024 caracteres.</p></div>
+            </div>
+            <div class="step">
+              <span class="step-label">Ao ativar</span>
+              <div><strong><code>SKILL.md</code></strong><p>Fluxo, regras, armadilhas e critério de pronto. Menos de 500 linhas.</p></div>
+            </div>
+            <div class="step">
+              <span class="step-label">Se preciso</span>
+              <div><strong><code>references/</code> e <code>assets/</code></strong><p>Detalhes e templates. Diga em que situação ler cada arquivo.</p></div>
+            </div>
+            <div class="step">
+              <span class="step-label">Ao rodar</span>
+              <div><strong><code>scripts/</code></strong><p>Operações que não podem variar. Só a saída ocupa contexto.</p></div>
+            </div>
+          </div>
+
+          <div class="focus">
+            <strong>A description decide se a skill é usada.</strong> Troque “Ajuda com documentos” por “Extrai texto e tabelas de PDFs e combina arquivos. Use ao trabalhar com PDFs ou formulários”.
+          </div>
+        </div>
+
+        <footer class="footer">
+          <span class="brand"><span class="brand-mark" aria-hidden="true"></span> Como construir uma boa skill</span>
+          <nav class="controls" aria-label="Navegação dos slides">
+            <button class="dot" type="button" aria-label="Ir para o slide 1" aria-current="false" data-slide="0"></button>
+            <button class="dot" type="button" aria-label="Ir para o slide 2" aria-current="true" data-slide="1"></button>
+            <button class="dot" type="button" aria-label="Ir para o slide 3" aria-current="false" data-slide="2"></button>
+            <button class="nav-button previous" type="button" aria-label="Slide anterior">←</button>
+            <button class="nav-button next" type="button" aria-label="Próximo slide">→</button>
+          </nav>
+        </footer>
+      </section>
+
+      <section class="slide" aria-hidden="true" aria-labelledby="slide-3-title">
+        <header class="topbar">
+          <p class="eyebrow">3. Validar</p>
+          <span class="counter">03 / 03</span>
+        </header>
+
+        <div class="hero">
+          <div>
+            <h2 id="slide-3-title">Só está pronta quando <span class="accent">prova que ajuda.</span></h2>
+            <p class="lead">
+              Uma execução que “pareceu boa” não basta. Teste em sessão limpa, leia o que o agente fez e corrija a skill a partir do que observou.
+            </p>
+          </div>
+
+          <div class="path" aria-label="Verificações antes de publicar">
+            <div class="step">
+              <span class="step-label">Ativa?</span>
+              <div><strong>Na hora certa</strong><p>Cerca de 20 pedidos, com quase acertos, rodando cada um 3 vezes.</p></div>
+            </div>
+            <div class="step">
+              <span class="step-label">Melhora?</span>
+              <div><strong>Com e sem a skill</strong><p>Compare os mesmos cenários em qualidade, tempo e tokens.</p></div>
+            </div>
+            <div class="step">
+              <span class="step-label">É segura?</span>
+              <div><strong>Sem surpresas</strong><p>Sem segredos, com confirmação em ações destrutivas. Leia skills de terceiros antes de instalar.</p></div>
+            </div>
+            <div class="step">
+              <span class="step-label">Evolui?</span>
+              <div><strong>A cada uso real</strong><p>Toda correção vira armadilha documentada. O que não fez diferença sai.</p></div>
+            </div>
+          </div>
+
+          <div class="focus">
+            <strong>Comece por aqui:</strong> <a href="https://agentskills.io/specification">especificação</a>, <a href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices">boas práticas</a>, <a href="https://github.com/anthropics/skills/tree/main/template">template</a> e <a href="https://github.com/anthropics/skills/tree/main/skills/skill-creator">skill-creator</a>. Detalhes no <a href="guia-criacao-skills.md">guia completo</a>.
+          </div>
+        </div>
+
+        <footer class="footer">
+          <span class="brand"><span class="brand-mark" aria-hidden="true"></span> Como construir uma boa skill</span>
+          <nav class="controls" aria-label="Navegação dos slides">
+            <button class="dot" type="button" aria-label="Ir para o slide 1" aria-current="false" data-slide="0"></button>
+            <button class="dot" type="button" aria-label="Ir para o slide 2" aria-current="false" data-slide="1"></button>
+            <button class="dot" type="button" aria-label="Ir para o slide 3" aria-current="true" data-slide="2"></button>
+            <button class="nav-button previous" type="button" aria-label="Slide anterior">←</button>
+            <button class="nav-button next" type="button" aria-label="Próximo slide" disabled>→</button>
+          </nav>
+        </footer>
+      </section>
+    </main>
+
+    <script>
+      const slides = [...document.querySelectorAll(".slide")];
+      let currentSlide = 0;
+
+      function showSlide(index) {
+        currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+
+        slides.forEach((slide, slideIndex) => {
+          const isCurrent = slideIndex === currentSlide;
+          slide.setAttribute("aria-hidden", String(!isCurrent));
+          slide.querySelectorAll(".dot").forEach((dot) => {
+            dot.setAttribute("aria-current", String(Number(dot.dataset.slide) === currentSlide));
+          });
+          slide.querySelector(".previous").disabled = currentSlide === 0;
+          slide.querySelector(".next").disabled = currentSlide === slides.length - 1;
+        });
+      }
+
+      document.querySelectorAll(".dot").forEach((dot) => {
+        dot.addEventListener("click", () => showSlide(Number(dot.dataset.slide)));
+      });
+
+      document.querySelectorAll(".previous").forEach((button) => {
+        button.addEventListener("click", () => showSlide(currentSlide - 1));
+      });
+
+      document.querySelectorAll(".next").forEach((button) => {
+        button.addEventListener("click", () => showSlide(currentSlide + 1));
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowRight" || event.key === "PageDown") showSlide(currentSlide + 1);
+        if (event.key === "ArrowLeft" || event.key === "PageUp") showSlide(currentSlide - 1);
+        if (event.key === "Home") showSlide(0);
+        if (event.key === "End") showSlide(slides.length - 1);
+      });
+
+      const requestedSlide = Number(new URLSearchParams(window.location.search).get("slide"));
+      if (requestedSlide >= 1 && requestedSlide <= slides.length) showSlide(requestedSlide - 1);
+    </script>
+  </body>
+</html>
